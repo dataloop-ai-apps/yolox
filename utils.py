@@ -64,12 +64,7 @@ def convert_json(input_file, ids_indicator, output_file):
 
     new_data = {
         "info": {
-            "description": "My COCO dataset",
-            "url": "",
-            "version": "1.0",
-            "year": 2023,
-            "contributor": "",
-            "date_created": "2022-01-01T00:00:00"
+            "description": "COCO format dataset"
         },
         "licenses": [],
         "images": new_images,

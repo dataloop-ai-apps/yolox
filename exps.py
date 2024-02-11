@@ -135,9 +135,9 @@ class XLargeExp(MyExp):
 
 class DynamicClassCreator:
     def __init__(self, class_name):
-        # Ensure a class name is provided
-        if not class_name:
-            raise ValueError("Invalid class name")
+        # Ensure a class name is provided - type string
+        if not isinstance(class_name, str):
+            raise ValueError("Invalid class name - must be a string")
 
         # Retrieve the actual base class based on its name
         base_class = globals().get(class_name)
@@ -151,8 +151,8 @@ class DynamicClassCreator:
         # Iterate over attributes and methods of the base class
         for name, value in vars(base_class).items():
             # Exclude special methods and attributes
-            if not name.startswith('__'):
-                class_dict[name] = value
+            # if not name.startswith('__'):
+            class_dict[name] = value
 
         # Create the dynamic class using the type() function
         dynamic_class = type(class_name, (base_class,), class_dict)

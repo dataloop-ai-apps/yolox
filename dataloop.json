@@ -5,13 +5,17 @@
   "scope": "project",
   "description": "YOLO-X Model Application",
   "attributes": {
-    "Provider": "Other",
+    "Provider": "Dataloop",
     "License": "GPL 3.0",
     "Category": "Model",
     "Computer Vision": "Object Detection",
     "Media Type": "Image"
   },
-
+  "codebase": {
+    "type": "git",
+    "gitUrl": "https://github.com/dataloop-ai-apps/yolox.git",
+    "gitTag": ""
+  },
   "components": {
     "computeConfigs": [
       {
@@ -20,7 +24,7 @@
           "dtlpy": "1.89.11"
         },
         "runtime": {
-          "podType": "regular-xs",
+          "podType": "regular-m",
           "concurrency": 1,
           "runnerImage": "dataloopai/dtlpy-agent:gpu.cuda.11.8.py3.8.pytorch2",
           "autoscaler": {
@@ -65,7 +69,7 @@
         "functions": [
           {
             "name": "evaluate_model",
-            "computeConfig": "yolox-train-evaluate",
+            "computeConfig": "yolox-deploy",
             "input": [
               {
                 "type": "Model",
@@ -81,7 +85,7 @@
             "output": [],
             "displayName": "Evaluate a Model",
             "displayIcon": "",
-            "description": "Function to evaluate YOLOv8 model performance"
+            "description": "Function to evaluate YoloX model performance"
           },
           {
             "name": "predict_items",
@@ -95,7 +99,7 @@
             "output": [],
             "displayName": "Predict Items",
             "displayIcon": "",
-            "description": "Function to run YOLOv8 inference on items"
+            "description": "Function to run YoloX inference on items"
           },
           {
             "name": "train_model",
@@ -110,7 +114,7 @@
             "output": [],
             "displayName": "Train a Model",
             "displayIcon": "",
-            "description": "Function to train YOLOv8 model"
+            "description": "Function to train YoloX model"
           }
         ]
       }
@@ -122,7 +126,7 @@
         "scope": "project",
         "status": "pre-trained",
         "configuration": {
-          "weights_filename": "",
+          "weights_filename": "yolov3.pth",
           "checkpoint_url": "",
           "exp_class_name": "Yolov3Exp",
           "epochs": 10,
@@ -137,7 +141,7 @@
           "train": true,
           "evaluate": true
         },
-        "description": "YOLOv3 ... ",
+        "description": "YOLOv3",
         "labels": [
           "person",
           "bicycle",
@@ -227,7 +231,7 @@
         "scope": "project",
         "status": "pre-trained",
         "configuration": {
-          "weights_filename": "",
+          "weights_filename": "yolox_tiny.pth",
           "checkpoint_url": "",
           "exp_class_name": "TinyExp",
           "epochs": 10,
@@ -332,7 +336,7 @@
         "scope": "project",
         "status": "pre-trained",
         "configuration": {
-          "weights_filename": "",
+          "weights_filename": "yolox_nano.pth",
           "checkpoint_url": "",
           "exp_class_name": "NanoExp",
           "epochs": 10,
@@ -544,7 +548,7 @@
         "scope": "project",
         "status": "pre-trained",
         "configuration": {
-          "weights_filename": "",
+          "weights_filename": "yolox_m.pth",
           "checkpoint_url": "",
           "exp_class_name": "MediumExp",
           "epochs": 10,
@@ -650,7 +654,7 @@
         "scope": "project",
         "status": "pre-trained",
         "configuration": {
-          "weights_filename": "",
+          "weights_filename": "yolox_l.pth",
           "checkpoint_url": "",
           "exp_class_name": "LargeExp",
           "epochs": 10,
@@ -756,7 +760,7 @@
         "scope": "project",
         "status": "pre-trained",
         "configuration": {
-          "weights_filename": "",
+          "weights_filename": "yolox_x.pth",
           "checkpoint_url": "",
           "exp_class_name": "XLargeExp",
           "epochs": 10,
