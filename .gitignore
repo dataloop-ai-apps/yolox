@@ -279,3 +279,8 @@ pyrightconfig.json
 
 *.pth
 *.pt
+
+/datasets
+/tmp
+/YOLOX_outputs
+/torch2trt

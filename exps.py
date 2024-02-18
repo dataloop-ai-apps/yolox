@@ -1,13 +1,11 @@
 import numpy as np
 import torch
 import torch.nn as nn
-import os
 
 from yolox.exp import Exp as MyExp
 from yolox.data.datasets import COCODataset
 from yolox.evaluators import COCOEvaluator
 from yolox.utils import (gather, is_main_process, postprocess, synchronize, time_synchronized)
-from yolox.data import TrainTransform
 
 import itertools
 from collections import ChainMap, defaultdict
@@ -25,6 +23,7 @@ class Yolov3Exp(MyExp):
         self.depth = 1.0
         self.width = 1.0
         self.exp_name = "Yolov3-Exp"
+        self.data_num_workers = 0
 
     def get_model(self, sublinear=False):
         def init_yolo(M):
@@ -55,6 +54,7 @@ class TinyExp(MyExp):
         self.test_size = (416, 416)
         self.exp_name = "Tiny-yolox-Exp"
         self.enable_mixup = False
+        self.data_num_workers = 0
 
 
 class NanoExp(MyExp):
@@ -69,6 +69,7 @@ class NanoExp(MyExp):
         self.mosaic_prob = 0.5
         self.enable_mixup = False
         self.exp_name = "Nano-yolox-Exp"
+        self.data_num_workers = 0
 
     def get_model(self, sublinear=False):
 
@@ -103,6 +104,7 @@ class SmallExp(MyExp):
         self.depth = 0.33
         self.width = 0.50
         self.exp_name = "Small-yolox-Exp"
+        self.data_num_workers = 0
 
 
 class MediumExp(MyExp):
@@ -111,6 +113,7 @@ class MediumExp(MyExp):
         self.depth = 0.67
         self.width = 0.75
         self.exp_name = "Medium-yolox-Exp"
+        self.data_num_workers = 0
 
 
 class LargeExp(MyExp):
@@ -119,6 +122,7 @@ class LargeExp(MyExp):
         self.depth = 1.0
         self.width = 1.0
         self.exp_name = "Large-yolox-Exp"
+        self.data_num_workers = 0
 
 
 class XLargeExp(MyExp):
@@ -127,6 +131,7 @@ class XLargeExp(MyExp):
         self.depth = 1.33
         self.width = 1.25
         self.exp_name = "XLarge-yolox-Exp"
+        self.data_num_workers = 0
 
 
 #############################
@@ -182,7 +187,7 @@ class DtlEvaluator(COCOEvaluator):
         nms_time = 0
         n_samples = max(len(self.dataloader) - 1, 1)
 
-        if trt_file is not None:
+        if trt_file is not None:  #### delete?
             from torch2trt import TRTModule
 
             model_trt = TRTModule()
@@ -274,7 +279,7 @@ class DtlDataset(COCODataset):
             else "{:012}".format(id_) + ".jpg"
         )
 
-        return (res, img_info, resized_info, file_name)
+        return res, img_info, resized_info, file_name
 
 
 if __name__ == '__main__':

@@ -1,7 +1,7 @@
 {
   "name": "yolox",
-  "displayName": "YOLO-X",
-  "version": "v0.0.3",
+  "displayName": "YOLOX",
+  "version": "v0.0.6",
   "scope": "project",
   "description": "YOLO-X Model Application",
   "attributes": {
@@ -11,21 +11,19 @@
     "Computer Vision": "Object Detection",
     "Media Type": "Image"
   },
-
+  "codebaseTMP": {
+    "type": "git",
+    "gitUrl": "https://github.com/dataloop-ai-apps/yolox.git",
+    "gitTag": "v0.2.8"
+  },
   "components": {
     "computeConfigs": [
       {
         "name": "yolox-deploy",
-        "versions": {
-          "dtlpy": "1.89.11"
-        },
         "runtime": {
-          "podType": "regular-s",
-          "versions": {
-            "dtlpy": "1.89.11"
-        },
+          "podType": "regular-m",
           "concurrency": 1,
-          "runnerImage": "dataloopai/dtlpy-agent:gpu.cuda.11.8.py3.8.pytorch2",
+          "runnerImage": "dataloopai/dtlpy-agent:cpu.py3.8.pytorch2",
           "autoscaler": {
             "type": "rabbitmq",
             "minReplicas": 0,
@@ -36,14 +34,8 @@
       },
       {
         "name": "yolox-train-evaluate",
-        "versions": {
-          "dtlpy": "1.89.11"
-        },
         "runtime": {
-          "podType": "regular-m",
-          "versions": {
-            "dtlpy": "1.89.11"
-        },
+          "podType": "gpu-t4",
           "concurrency": 1,
           "runnerImage": "dataloopai/dtlpy-agent:gpu.cuda.11.8.py3.8.pytorch2",
           "autoscaler": {
@@ -71,7 +63,7 @@
         "functions": [
           {
             "name": "evaluate_model",
-            "computeConfig": "yolox-deploy",
+            "computeConfig": "yolox-train-evaluate",
             "input": [
               {
                 "type": "Model",
@@ -129,11 +121,17 @@
         "status": "pre-trained",
         "configuration": {
           "weights_filename": "yolov3.pth",
-          "checkpoint_url": "",
+          "checkpoint_url": "https://storage.googleapis.com/model-mgmt-snapshots/yolov3/yolov3.pth",
           "exp_class_name": "Yolov3Exp",
           "epochs": 10,
           "batch_size": 4,
-          "conf_thres": 0.25
+          "conf_thres": 0.25,
+          "resume": false,
+          "fp16": false,
+          "occupy": false,
+          "logger": "tensorboard",
+          "cache": null,
+          "ckpt": null
         },
         "inputType": "image",
         "outputType": "box",
@@ -227,14 +225,14 @@
           "toothbrush"
         ]
       },
-            {
+      {
         "name": "yolox-tiny",
         "moduleName": "yolox-module",
         "scope": "project",
         "status": "pre-trained",
         "configuration": {
           "weights_filename": "yolox_tiny.pth",
-          "checkpoint_url": "",
+          "checkpoint_url": "https://storage.googleapis.com/model-mgmt-snapshots/YOLOX/yolox_tiny.pth",
           "exp_class_name": "TinyExp",
           "epochs": 10,
           "batch_size": 4,
@@ -339,7 +337,7 @@
         "status": "pre-trained",
         "configuration": {
           "weights_filename": "yolox_nano.pth",
-          "checkpoint_url": "",
+          "checkpoint_url": "https://storage.googleapis.com/model-mgmt-snapshots/YOLOX/yolox_nano.pth",
           "exp_class_name": "NanoExp",
           "epochs": 10,
           "batch_size": 4,
@@ -437,7 +435,6 @@
           "toothbrush"
         ]
       },
-
       {
         "name": "yolox-s",
         "moduleName": "yolox-module",
@@ -445,11 +442,17 @@
         "status": "pre-trained",
         "configuration": {
           "weights_filename": "yolox_s.pth",
-          "checkpoint_url": "https://storage.googleapis.com/model-mgmt-snapshots/yolo-v7/yolov7-seg.pt",
+          "checkpoint_url": "https://storage.googleapis.com/model-mgmt-snapshots/YOLOX/yolox_s.pth",
           "exp_class_name": "SmallExp",
           "epochs": 10,
           "batch_size": 4,
-          "conf_thres": 0.25
+          "conf_thres": 0.25,
+          "resume": false,
+          "fp16": false,
+          "occupy": false,
+          "logger": "tensorboard",
+          "cache": null,
+          "ckpt": null
         },
         "inputType": "image",
         "outputType": "box",
@@ -543,7 +546,6 @@
           "toothbrush"
         ]
       },
-
       {
         "name": "yolox-m",
         "moduleName": "yolox-module",
@@ -551,7 +553,7 @@
         "status": "pre-trained",
         "configuration": {
           "weights_filename": "yolox_m.pth",
-          "checkpoint_url": "",
+          "checkpoint_url": "https://storage.googleapis.com/model-mgmt-snapshots/YOLOX/yolox_m.pth",
           "exp_class_name": "MediumExp",
           "epochs": 10,
           "batch_size": 4,
@@ -649,7 +651,6 @@
           "toothbrush"
         ]
       },
-
       {
         "name": "yolox-l",
         "moduleName": "yolox-module",
@@ -657,7 +658,7 @@
         "status": "pre-trained",
         "configuration": {
           "weights_filename": "yolox_l.pth",
-          "checkpoint_url": "",
+          "checkpoint_url": "https://storage.googleapis.com/model-mgmt-snapshots/YOLOX/yolox_l.pth",
           "exp_class_name": "LargeExp",
           "epochs": 10,
           "batch_size": 4,
@@ -755,15 +756,14 @@
           "toothbrush"
         ]
       },
-
-            {
+      {
         "name": "yolox-xl",
         "moduleName": "yolox-module",
         "scope": "project",
         "status": "pre-trained",
         "configuration": {
           "weights_filename": "yolox_x.pth",
-          "checkpoint_url": "",
+          "checkpoint_url": "https://storage.googleapis.com/model-mgmt-snapshots/YOLOX/yolox_x.pth",
           "exp_class_name": "XLargeExp",
           "epochs": 10,
           "batch_size": 4,

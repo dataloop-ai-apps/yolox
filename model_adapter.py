@@ -2,8 +2,10 @@ import logging
 import warnings
 import torch.backends.cudnn as cudnn
 import random
+import cv2
+import urllib.request
 
-from yolox.data import ValTransform
+from yolox.data import ValTransform, TrainTransform
 from yolox.utils import configure_nccl, configure_omp
 
 from utils import *
@@ -13,15 +15,14 @@ logger = logging.getLogger('ModelAdapter')
 
 
 @dl.Package.decorators.module(description='Model Adapter for Yolovx object detection',
-                              name='model-adapter', init_inputs={'model_entity': dl.Model})
+                              name='model-adapter',
+                              init_inputs={'model_entity': dl.Model})
 class ModelAdapter(dl.BaseModelAdapter):
 
     def __init__(self, model_entity: dl.Model):
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
         self.cls_names = model_entity.labels
-
-        # Experiment initialization
-        self.exp = self.initialize_experiment(model_entity.configuration.get("exp_class_name", "SmallExp"))
+        self.exp = None
         self.trainer = None
 
         super().__init__(model_entity)
@@ -61,8 +62,24 @@ class ModelAdapter(dl.BaseModelAdapter):
 
     def load(self, local_path, **kwargs):
         model_filename = os.path.join(local_path, self.configuration.get('weights_filename', 'weights/best_ckpt.pth'))
+        checkpoint_url = self.configuration.get('checkpoint_url', None)
+
+        # Experiment initialization
+        self.exp = self.initialize_experiment(self.model_entity.configuration.get("exp_class_name", "SmallExp"))
+
         self.model = self.exp.get_model()
         self.model.eval()
+
+        # Load weights from url
+        if not os.path.isfile(model_filename):
+            if checkpoint_url is not None:
+                logger.info("Loading weights from url")
+                os.makedirs(local_path, exist_ok=True)
+                logger.info("created local_path dir")
+                urllib.request.urlretrieve(checkpoint_url,
+                                           os.path.join(local_path, self.configuration.get('weights_filename')))
+            else:
+                raise Exception("checkpoints weights were not loaded! URL not found")
 
         if os.path.exists(model_filename):
             logger.info("Loading saved weights")
@@ -143,6 +160,11 @@ class ModelAdapter(dl.BaseModelAdapter):
         self.exp.num_classes = self.configuration.get("num_classes", len(self.model_entity.labels))
         self.exp.max_epoch = self.configuration.get("epoch", 10)
         self.trainer = self.exp.get_trainer(args)
+
+        logger.info(f"Trainer device: {self.trainer.device}, Trainer local rank: {self.trainer.local_rank}")
+        logger.info(f"Trainer is_distributed: {self.trainer.is_distributed}, Trainer rank: {self.trainer.rank}")
+        logger.info(f"TORCH: {torch.__version__}")
+
         self.trainer.train()
 
     def predict(self, batch, **kwargs):
@@ -157,10 +179,10 @@ class ModelAdapter(dl.BaseModelAdapter):
                                                          detection["y1"], detection["label"],
                                                          detection["conf"])
 
-                    collection.add(annotation_definition=dl.Box(left=x0,
-                                                                top=y0,
-                                                                right=x1,
-                                                                bottom=y1,
+                    collection.add(annotation_definition=dl.Box(left=max(x0, 0),
+                                                                top=max(y0, 0),
+                                                                right=min(x1, img.shape[1]),
+                                                                bottom=min(y1, img.shape[0]),
                                                                 label=label
                                                                 ),
 
@@ -197,7 +219,11 @@ class ModelAdapter(dl.BaseModelAdapter):
             if decoder is not None:
                 outputs = decoder(outputs, dtype=outputs.type())
 
-            num_classes = len(self.model_entity.dataset.labels)
+            try:
+                num_classes = len(self.model_entity.dataset.labels)
+            except RuntimeError:
+                num_classes = len(self.model_entity.id_to_label_map.values())
+
             # NMS - POST PROCESSING STEP
             outputs = postprocess(
                 outputs, num_classes, self.exp.test_conf,
@@ -210,10 +236,12 @@ class ModelAdapter(dl.BaseModelAdapter):
                 "Model's predictions confidence is less than confidence threshold - therefore no annotations found! ")
             return None
         else:
-            bboxes, scores, cls = ModelAdapter.inference_results(output=outputs[0], img_info=img_info)
+            bboxes, scores, cls = self.inference_results(output=outputs[0], img_info=img_info)
 
-            box_annotations = ModelAdapter.create_box_annotations(boxes=bboxes, scores=scores, cls_ids=cls,
-                                                                  cls_names=self.model_entity.id_to_label_map)
+            box_annotations = self.create_box_annotations(boxes=bboxes,
+                                                          scores=scores,
+                                                          cls_ids=cls,
+                                                          cls_names=self.model_entity.id_to_label_map)
 
         return box_annotations
 
@@ -319,33 +347,3 @@ def create_model(package: dl.Package, model_name, artifact_path, labels, dataset
     else:
         model.deploy(service_config=package.service_config)
     return model
-
-
-def test_predict(dataset: dl.Dataset, model: dl.Model):
-    items_list = list()
-    items_id = list()
-    pages = dataset.items.list()
-    for page in pages:
-        for item in page:
-            items_list.append(item)
-            items_id.append(item.id)
-
-    adapter = ModelAdapter(model_entity=model)
-    adapter.predict_items(items_list)
-
-
-def test_train(model: dl.Model):
-    adapter = ModelAdapter(model_entity=model)
-    adapter.train_model(model=model)
-
-
-if __name__ == "__main__":
-    dl.setenv('prod')
-    project = dl.projects.get(project_id='4c36d0d2-b5cc-47f7-ba81-b0d6222283d1')
-    dataset = project.datasets.get(dataset_name='debugging-train-yolox')
-    # model = project.models.get(model_name="new-yolox-debugger")
-    model = project.models.get(model_name="yoloxM-debugger")
-
-    test_train(model=model)
-
-    test_predict(dataset=dataset, model=model)
