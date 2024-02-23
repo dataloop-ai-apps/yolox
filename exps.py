@@ -17,32 +17,6 @@ import time
 # EXPERIMENTS TO INHERIT #
 ###########################
 
-class Yolov3Exp(MyExp):
-    def __init__(self):
-        super(Yolov3Exp, self).__init__()
-        self.depth = 1.0
-        self.width = 1.0
-        self.exp_name = "Yolov3-Exp"
-        self.data_num_workers = 0
-
-    def get_model(self, sublinear=False):
-        def init_yolo(M):
-            for m in M.modules():
-                if isinstance(m, nn.BatchNorm2d):
-                    m.eps = 1e-3
-                    m.momentum = 0.03
-
-        if "model" not in self.__dict__:
-            from yolox.models import YOLOX, YOLOFPN, YOLOXHead
-            backbone = YOLOFPN()
-            head = YOLOXHead(self.num_classes, self.width, in_channels=[128, 256, 512], act="lrelu")
-            self.model = YOLOX(backbone, head)
-        self.model.apply(init_yolo)
-        self.model.head.initialize_biases(1e-2)
-
-        return self.model
-
-
 class TinyExp(MyExp):
     def __init__(self):
         super(TinyExp, self).__init__()
@@ -186,16 +160,6 @@ class DtlEvaluator(COCOEvaluator):
         inference_time = 0
         nms_time = 0
         n_samples = max(len(self.dataloader) - 1, 1)
-
-        if trt_file is not None:  #### delete?
-            from torch2trt import TRTModule
-
-            model_trt = TRTModule()
-            model_trt.load_state_dict(torch.load(trt_file))
-
-            x = torch.ones(1, 3, test_size[0], test_size[1]).cuda()
-            model(x)
-            model = model_trt
 
         for cur_iter, (imgs, _, info_imgs, ids) in enumerate(
                 progress_bar(self.dataloader)

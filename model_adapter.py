@@ -285,11 +285,11 @@ class ModelAdapter(dl.BaseModelAdapter):
         return img
 
 
-def package_creation(project_id: str, package_name: str, code_base_folder_name: str):
+def package_creation(project_id: str, package_name: str):
     code_base_path = os.path.abspath(
         os.path.join(os.getcwd(), os.pardir))
     project = dl.projects.get(project_id=project_id)
-    codebase = project.codebases.pack(directory=os.path.join(code_base_path, code_base_folder_name))
+    codebase = project.codebases.pack(directory=os.getcwd())
     metadata = dl.Package.get_ml_metadata(cls=ModelAdapter,
                                           default_configuration={'weights_filename': 'yolox_s.pth',
                                                                  'exp_class_name': 'SmallExp',
@@ -299,7 +299,7 @@ def package_creation(project_id: str, package_name: str, code_base_folder_name: 
                                           output_type=dl.AnnotationType.BOX
                                           )
 
-    modules = dl.PackageModule.from_entry_point(entry_point='yolox-adapter.py')
+    modules = dl.PackageModule.from_entry_point(entry_point='model_adapter.py')
 
     package = project.packages.push(package_name=package_name,
                                     src_path=os.getcwd(),

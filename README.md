@@ -5,7 +5,7 @@
 This repo is a model integration between [MegEngine implementation of PyTorch YOLOX](https://github.com/Megvii-BaseDetection/YOLOX) object detection model and [Dataloop](https://dataloop.ai/)  
 For the object detection YOLOX adapter, check out [this repo](https://github.com/dataloop-ai-apps/yolox/).
 
-Ultralytics YOLOv8 represents a modernized iteration, refining the successes of prior YOLO models. With added features and improvements, it aims to enhance both performance and versatility. YOLOv8 prioritizes speed, accuracy, and user-friendly design, making it a reliable option for tasks like object detection, tracking, instance segmentation, image classification, and pose estimation. In this repo we implement the integration between YOLOv8 in its segmentation model with our Dataloop platform.
+Ultralytics YOLOv8 represents a modernized iteration, refining the successes of prior YOLO models. With added features and improvements, it aims to enhance both performance and versatility. YOLOv8 prioritizes speed, accuracy, and user-friendly design, making it a reliable option for tasks like object detection, tracking, instance segmentation, image classification, and pose estimation. In this repo we implement the integration between YOLOv8 in its segmentation model with our Dataloop platform. 
 
 YOLOv8 segmentation achieves state-of-the-art results in the task of identifying objects in images while also outlying its contours, like in the following images that display its results in a variety of tasks:
 

@@ -283,4 +283,3 @@ pyrightconfig.json
 /datasets
 /tmp
 /YOLOX_outputs
-/torch2trt
