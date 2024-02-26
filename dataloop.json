@@ -2,7 +2,7 @@
   "name": "yolox",
   "displayName": "YOLOX",
   "version": "0.0.5",
-  "scope": "project",
+  "scope": "public",
   "description": "YOLO-X Model Application",
   "attributes": {
     "Provider": "Other",
