@@ -30,12 +30,12 @@ if __name__ == "__main__":
 
     dl.setenv('rc')
 
-    project = dl.projects.get(project_name='DT-pipeline-execution')
-    dataset = project.datasets.get(dataset_name='yolox-test-train')
-    # model = project.models.get(model_name="new-yolox-debugger")
-    model = project.models.get(model_id='65d730bd5899127b62d882d0')
-
-    test_train(model=model)
+    # project = dl.projects.get(project_name='DT-pipeline-execution')
+    # dataset = project.datasets.get(dataset_name='yolox-test-train')
+    # # model = project.models.get(model_name="new-yolox-debugger")
+    # model = project.models.get(model_id='65d730bd5899127b62d882d0')
+    #
+    # test_train(model=model)
 
     # test_predict(dataset=dataset, model=model)
 

@@ -5,16 +5,16 @@
   "scope": "project",
   "description": "YOLO-X Model Application",
   "attributes": {
-    "Provider": "Dataloop",
-    "License": "GPL 3.0",
+    "Provider": "Other",
+    "License": "Apache 2.0",
     "Category": "Model",
     "Computer Vision": "Object Detection",
     "Media Type": "Image"
   },
-  "codebaseTMP": {
+  "codebase": {
     "type": "git",
     "gitUrl": "https://github.com/dataloop-ai-apps/yolox.git",
-    "gitTag": "0.2.8"
+    "gitTag": "0.0.4"
   },
   "components": {
     "computeConfigs": [
