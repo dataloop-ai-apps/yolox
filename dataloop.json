@@ -74,9 +74,25 @@
                 "type": "Dataset",
                 "name": "dataset",
                 "description": "Dataloop Dataset Entity"
+              },
+              {
+                "type": "Json",
+                "name": "filters",
+                "description": "Dataloop Filter DQL"
               }
             ],
-            "output": [],
+            "output": [
+              {
+                "type": "Model",
+                "name": "model",
+                "description": "Dataloop Model Entity"
+              },
+              {
+                "type": "Dataset",
+                "name": "dataset",
+                "description": "Dataloop Dataset Entity"
+              }
+            ],
             "displayName": "Evaluate a Model",
             "displayIcon": "",
             "description": "Function to evaluate YoloX model performance"
@@ -90,7 +106,18 @@
                 "description": "List of items to run inference on"
               }
             ],
-            "output": [],
+            "output": [
+              {
+                "type": "Item[]",
+                "name": "items",
+                "description": "The same input images for prediction."
+              },
+              {
+                "type": "Annotation[]",
+                "name": "annotations",
+                "description": "The predicted annotations."
+              }
+            ],
             "displayName": "Predict Items",
             "displayIcon": "",
             "description": "Function to run YoloX inference on items"
@@ -105,10 +132,36 @@
                 "description": "Dataloop Model Entity"
               }
             ],
-            "output": [],
+            "output": [
+              {
+                "type": "Model",
+                "name": "model",
+                "description": "Dataloop Model Entity"
+              }
+            ],
             "displayName": "Train a Model",
             "displayIcon": "",
             "description": "Function to train YoloX model"
+          },
+          {
+            "name": "predict_dataset",
+            "input": [
+              {
+                "type": "Dataset",
+                "name": "dataset",
+                "description": ""
+              },
+              {
+                "type": "Json",
+                "name": "filters",
+                "description": "Dataloop Filter DQL"
+              }
+            ],
+            "output": [
+            ],
+            "displayName": "Predict Dataset",
+            "displayIcon": "",
+            "description": "Function to run YoloX inference on a dataset"
           }
         ]
       }
@@ -341,7 +394,13 @@
           "exp_class_name": "MediumExp",
           "epochs": 10,
           "batch_size": 4,
-          "conf_thres": 0.25
+          "conf_thres": 0.25,
+          "resume": false,
+          "fp16": false,
+          "occupy": false,
+          "logger": "tensorboard",
+          "cache": null,
+          "ckpt": null
         },
         "inputType": "image",
         "outputType": "box",
@@ -446,7 +505,13 @@
           "exp_class_name": "LargeExp",
           "epochs": 10,
           "batch_size": 4,
-          "conf_thres": 0.25
+          "conf_thres": 0.25,
+          "resume": false,
+          "fp16": false,
+          "occupy": false,
+          "logger": "tensorboard",
+          "cache": null,
+          "ckpt": null
         },
         "inputType": "image",
         "outputType": "box",
@@ -551,7 +616,13 @@
           "exp_class_name": "XLargeExp",
           "epochs": 10,
           "batch_size": 4,
-          "conf_thres": 0.25
+          "conf_thres": 0.25,
+          "resume": false,
+          "fp16": false,
+          "occupy": false,
+          "logger": "tensorboard",
+          "cache": null,
+          "ckpt": null
         },
         "inputType": "image",
         "outputType": "box",
