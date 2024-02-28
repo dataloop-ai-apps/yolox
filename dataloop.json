@@ -178,7 +178,13 @@
           "exp_class_name": "TinyExp",
           "epochs": 10,
           "batch_size": 4,
-          "conf_thres": 0.25
+          "conf_thres": 0.25,
+          "resume": false,
+          "fp16": false,
+          "occupy": false,
+          "logger": "tensorboard",
+          "cache": null,
+          "ckpt": null
         },
         "inputType": "image",
         "outputType": "box",
