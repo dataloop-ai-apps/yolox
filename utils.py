@@ -86,10 +86,10 @@ def change_dataset_directories(model_entity: dl.Model, default_path=None):
         os.makedirs(path, exist_ok=True)
 
     # Move items to the new paths - move instead of copy to avoid re-downloading in the base model adapter
-    shutil.copytree(src=os.path.join(default_path, 'train', 'items', 'train'),
+    shutil.copytree(src=os.path.join(default_path, 'train', 'items'),
                     dst=os.path.join(new_path, 'train2017'), dirs_exist_ok=True)
 
-    shutil.copytree(src=os.path.join(default_path, 'validation', 'items', 'validation'),
+    shutil.copytree(src=os.path.join(default_path, 'validation', 'items'),
                     dst=os.path.join(new_path, 'val2017'), dirs_exist_ok=True)
 
     return default_path, new_path

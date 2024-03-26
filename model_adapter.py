@@ -4,6 +4,7 @@ import torch.backends.cudnn as cudnn
 import random
 import cv2
 import urllib.request
+from glob import glob
 
 from yolox.data import ValTransform, TrainTransform
 from yolox.utils import configure_nccl, configure_omp
@@ -88,6 +89,23 @@ class ModelAdapter(dl.BaseModelAdapter):
         else:
             raise dl.exceptions.NotFound(f'Model path ({model_filename}) not found! model weights is required')
 
+    @staticmethod
+    def move_annotation_files(data_path):
+        json_files = glob(os.path.join(data_path, 'json', '**/*.json'))
+        json_files += glob(os.path.join(data_path, 'json', '*.json'))
+        sub_path = '\\'.join(json_files[0].split('json\\')[-1].split('\\')[:-1])
+        item_files = glob(os.path.join(data_path, 'items', sub_path, '*'))
+
+        for src, dst in zip([json_files, item_files], ['json', 'items']):
+            for src_file in src:
+                if not os.path.exists(os.path.join(data_path, dst, os.path.basename(src_file))):
+                    shutil.move(src_file, os.path.join(data_path, dst, os.path.basename(src_file)))
+        for root, dirs, files in os.walk(data_path, topdown=False):
+            for dir_name in dirs:
+                dir_path = os.path.join(root, dir_name)
+                if not os.listdir(dir_path):
+                    os.rmdir(dir_path)
+
     def convert_from_dtlpy(self, data_path, **kwargs):
         # Subsets validation
         subsets = self.model_entity.metadata.get("system", dict()).get("subsets", None)
@@ -105,6 +123,9 @@ class ModelAdapter(dl.BaseModelAdapter):
             if pages.items_count == 0:
                 raise ValueError(f'Could not find box annotations in subset {subset}. '
                                  f'Cannot train without annotation in the data subsets')
+
+        self.move_annotation_files(os.path.join(data_path, 'train'))
+        self.move_annotation_files(os.path.join(data_path, 'validation'))
 
         # Set Dataset directories as yolox requires
         default_path, new_data_path = change_dataset_directories(model_entity=self.model_entity)
