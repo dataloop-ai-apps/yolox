@@ -93,7 +93,12 @@ class ModelAdapter(dl.BaseModelAdapter):
     def move_annotation_files(data_path):
         json_files = glob(os.path.join(data_path, 'json', '**/*.json'))
         json_files += glob(os.path.join(data_path, 'json', '*.json'))
-        sub_path = '\\'.join(json_files[0].split('json\\')[-1].split('\\')[:-1])
+
+        if os.path.sep == '\\':
+            sub_path = '\\'.join(json_files[0].split('json\\')[-1].split('\\')[:-1])
+        else:
+            sub_path = '/'.join(json_files[0].split('json/')[-1].split('/')[:-1])
+
         item_files = glob(os.path.join(data_path, 'items', sub_path, '*'))
 
         for src, dst in zip([json_files, item_files], ['json', 'items']):
