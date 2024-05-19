@@ -1,7 +1,7 @@
 {
   "name": "yolox",
   "displayName": "YOLOX",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "scope": "public",
   "description": "YOLO-X Model Application",
   "attributes": {
@@ -188,12 +188,6 @@
         },
         "inputType": "image",
         "outputType": "box",
-        "supportedMethods": {
-          "load": true,
-          "predict": true,
-          "train": true,
-          "evaluate": true
-        },
         "description": "YOLOX is a single-stage object detector that makes several modifications to YOLOv3. Changes include adding Mosaic and MixUp into the augmentation strategies to boost YOLOX’s performance.",
         "labels": [
           "person",
@@ -299,12 +293,6 @@
         },
         "inputType": "image",
         "outputType": "box",
-        "supportedMethods": {
-          "load": true,
-          "predict": true,
-          "train": true,
-          "evaluate": true
-        },
         "description": "YOLOX is a single-stage object detector that makes several modifications to YOLOv3. Changes include adding Mosaic and MixUp into the augmentation strategies to boost YOLOX’s performance.",
         "labels": [
           "person",
@@ -410,12 +398,6 @@
         },
         "inputType": "image",
         "outputType": "box",
-        "supportedMethods": {
-          "load": true,
-          "predict": true,
-          "train": true,
-          "evaluate": true
-        },
         "description": "YOLOX is a single-stage object detector that makes several modifications to YOLOv3. Changes include adding Mosaic and MixUp into the augmentation strategies to boost YOLOX’s performance.",
         "labels": [
           "person",
@@ -521,12 +503,6 @@
         },
         "inputType": "image",
         "outputType": "box",
-        "supportedMethods": {
-          "load": true,
-          "predict": true,
-          "train": true,
-          "evaluate": true
-        },
         "description": "YOLOX is a single-stage object detector that makes several modifications to YOLOv3. Changes include adding Mosaic and MixUp into the augmentation strategies to boost YOLOX’s performance.",
         "labels": [
           "person",
@@ -632,12 +608,6 @@
         },
         "inputType": "image",
         "outputType": "box",
-        "supportedMethods": {
-          "load": true,
-          "predict": true,
-          "train": true,
-          "evaluate": true
-        },
         "description": "YOLOX is a single-stage object detector that makes several modifications to YOLOv3. Changes include adding Mosaic and MixUp into the augmentation strategies to boost YOLOX’s performance.",
         "labels": [
           "person",
