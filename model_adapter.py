@@ -112,22 +112,6 @@ class ModelAdapter(dl.BaseModelAdapter):
                     os.rmdir(dir_path)
 
     def convert_from_dtlpy(self, data_path, **kwargs):
-        # Subsets validation
-        subsets = self.model_entity.metadata.get("system", dict()).get("subsets", None)
-        if 'train' not in subsets:
-            raise ValueError('Could not find train set. Yolo-x requires train and validation set for training. '
-                             'Add a train set DQL filter in the dl.Model metadata')
-        if 'validation' not in subsets:
-            raise ValueError('Could not find validation set. Yolo-x requires train and validation set for training. '
-                             'Add a validation set DQL filter in the dl.Model metadata')
-
-        for subset, filters_dict in subsets.items():
-            filters = dl.Filters(custom_filter=filters_dict)
-            filters.add_join(field='type', values='box')
-            pages = self.model_entity.dataset.items.list(filters=filters)
-            if pages.items_count == 0:
-                raise ValueError(f'Could not find box annotations in subset {subset}. '
-                                 f'Cannot train without annotation in the data subsets')
 
         self.move_annotation_files(os.path.join(data_path, 'train'))
         self.move_annotation_files(os.path.join(data_path, 'validation'))
@@ -310,66 +294,3 @@ class ModelAdapter(dl.BaseModelAdapter):
         os.remove(path)
         return img
 
-
-def package_creation(project_id: str, package_name: str):
-    code_base_path = os.path.abspath(
-        os.path.join(os.getcwd(), os.pardir))
-    project = dl.projects.get(project_id=project_id)
-    codebase = project.codebases.pack(directory=os.getcwd())
-    metadata = dl.Package.get_ml_metadata(cls=ModelAdapter,
-                                          default_configuration={'weights_filename': 'yolox_s.pth',
-                                                                 'exp_class_name': 'SmallExp',
-                                                                 'epochs': 10,
-                                                                 'batch_size': 4,
-                                                                 'conf_thres': 0.25},
-                                          output_type=dl.AnnotationType.BOX
-                                          )
-
-    modules = dl.PackageModule.from_entry_point(entry_point='model_adapter.py')
-
-    package = project.packages.push(package_name=package_name,
-                                    src_path=os.getcwd(),
-                                    package_type='ml',
-                                    codebase=codebase,
-                                    modules=[modules],
-                                    is_global=False,
-                                    service_config={
-                                        'runtime': dl.KubernetesRuntime(pod_type=dl.INSTANCE_CATALOG_REGULAR_S,
-                                                                        # runnerImage=
-                                                                        autoscaler=dl.KubernetesRabbitmqAutoscaler(
-                                                                            min_replicas=0,
-                                                                            max_replicas=1),
-                                                                        concurrency=1).to_json()},
-                                    metadata=metadata)
-    return package
-
-
-def create_model(package: dl.Package, model_name, artifact_path, labels, dataset_id: str):
-    try:
-        model = package.models.create(model_name=model_name,
-                                      dataset_id=dataset_id,
-                                      description='yolox pretrain - coco dataset',
-                                      tags=['yolox', 'pretrained', "coco-ms"],
-                                      status='trained',
-                                      labels=labels,
-                                      configuration={'weights_filename': 'yolox_s.pth',
-                                                     'exp_class_name': 'SmallExp',
-                                                     'epochs': 10,
-                                                     'batch_size': 4,
-                                                     'conf_thres': 0.25},
-                                      project_id=package.project.id,
-                                      )
-
-    except dl.exceptions.BadRequest:
-        model = package.models.get(model_name=model_name)
-
-    artifact = model.artifacts.upload(filepath=artifact_path)
-    model.configuration['weights_filename'] = artifact.filename
-
-    if model.status == 'deployed':
-        for service_id in model.metadata.get('system', dict()).get('deploy', dict()).get('services', list()):
-            service = dl.services.get(service_id=service_id)
-            service.update()
-    else:
-        model.deploy(service_config=package.service_config)
-    return model
