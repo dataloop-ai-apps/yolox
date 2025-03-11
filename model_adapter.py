@@ -299,12 +299,3 @@ class ModelAdapter(dl.BaseModelAdapter):
             img = None
         os.remove(path)
         return img
-
-
-if __name__ == '__main__':
-    dl.setenv('prod')
-    model = dl.models.get(None, "67d017afc51e44046b4a25e3")
-    model.status = 'pre-trained'
-    model.update()
-    adapter = ModelAdapter(model)
-    adapter.train_model(model)
