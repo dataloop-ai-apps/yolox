@@ -106,8 +106,8 @@ class ModelAdapter(dl.BaseModelAdapter):
 
     def convert_from_dtlpy(self, data_path, **kwargs):
 
-        self.move_annotation_files(os.path.join(data_path, 'train'))
-        self.move_annotation_files(os.path.join(data_path, 'validation'))
+        # self.move_annotation_files(os.path.join(data_path, 'train'))
+        # self.move_annotation_files(os.path.join(data_path, 'validation'))
 
         # Set Dataset directories as yolox requires
         default_path, new_data_path = change_dataset_directories(model_entity=self.model_entity)
