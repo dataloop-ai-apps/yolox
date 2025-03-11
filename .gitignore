@@ -285,3 +285,5 @@ pyrightconfig.json
 /YOLOX_outputs
 
 /scripts
+*.whl
+test-wheel-env
