@@ -97,7 +97,7 @@ class ModelAdapter(dl.BaseModelAdapter):
         for src, dst in zip([json_files, item_files], ['json', 'items']):
             for src_file in src:
                 if not os.path.exists(os.path.join(data_path, dst, os.path.basename(src_file))):
-                    shutil.move(src_file, os.path.join(data_path, dst, os.path.basename(src_file)))
+                    shutil.move(src_file, os.path.join(data_path, dst, sub_path, os.path.basename(src_file)))
         for root, dirs, files in os.walk(data_path, topdown=False):
             for dir_name in dirs:
                 dir_path = os.path.join(root, dir_name)
@@ -299,3 +299,12 @@ class ModelAdapter(dl.BaseModelAdapter):
             img = None
         os.remove(path)
         return img
+
+
+if __name__ == '__main__':
+    dl.setenv('prod')
+    model = dl.models.get(None, "67d017afc51e44046b4a25e3")
+    model.status = 'pre-trained'
+    model.update()
+    adapter = ModelAdapter(model)
+    adapter.train_model(model)
