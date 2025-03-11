@@ -283,3 +283,5 @@ pyrightconfig.json
 /datasets
 /tmp
 /YOLOX_outputs
+
+/scripts
