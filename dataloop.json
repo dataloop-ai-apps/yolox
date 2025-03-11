@@ -22,9 +22,9 @@
       {
         "name": "yolox-deploy",
         "runtime": {
-          "podType": "regular-m",
+          "podType": "regular-xs",
           "concurrency": 1,
-          "runnerImage": "dataloopai/dtlpy-agent:cpu.py3.8.pytorch2",
+          "runnerImage": "gcr.io/viewo-g/piper/agent/runner/apps/yolox:0.0.2",
           "autoscaler": {
             "type": "rabbitmq",
             "minReplicas": 0,
@@ -38,7 +38,7 @@
         "runtime": {
           "podType": "gpu-t4",
           "concurrency": 1,
-          "runnerImage": "gcr.io/viewo-g/piper/agent/runner/apps/yolox:0.0.1",
+          "runnerImage": "gcr.io/viewo-g/piper/agent/runner/apps/yolox:0.0.2",
           "autoscaler": {
             "type": "rabbitmq",
             "minReplicas": 0,

@@ -15,14 +15,10 @@ from exps import *
 logger = logging.getLogger('ModelAdapter')
 
 
-@dl.Package.decorators.module(description='Model Adapter for Yolovx object detection',
-                              name='model-adapter',
-                              init_inputs={'model_entity': dl.Model})
 class ModelAdapter(dl.BaseModelAdapter):
 
-    def __init__(self, model_entity: dl.Model):
+    def __init__(self, model_entity: dl.Model = None):
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-        self.cls_names = model_entity.labels
         self.exp = None
         self.trainer = None
 
@@ -40,11 +36,7 @@ class ModelAdapter(dl.BaseModelAdapter):
                     data_dir=self.data_dir,
                     json_file=self.train_ann,
                     img_size=self.input_size,
-                    preproc=TrainTransform(
-                        max_labels=50,
-                        flip_prob=self.flip_prob,
-                        hsv_prob=self.hsv_prob
-                    ),
+                    preproc=TrainTransform(max_labels=50, flip_prob=self.flip_prob, hsv_prob=self.hsv_prob),
                     cache=cache,
                     cache_type=cache_type,
                 )
@@ -77,8 +69,9 @@ class ModelAdapter(dl.BaseModelAdapter):
                 logger.info("Loading weights from url")
                 os.makedirs(local_path, exist_ok=True)
                 logger.info("created local_path dir")
-                urllib.request.urlretrieve(checkpoint_url,
-                                           os.path.join(local_path, self.configuration.get('weights_filename')))
+                urllib.request.urlretrieve(
+                    checkpoint_url, os.path.join(local_path, self.configuration.get('weights_filename'))
+                )
             else:
                 raise Exception("checkpoints weights were not loaded! URL not found")
 
@@ -120,7 +113,12 @@ class ModelAdapter(dl.BaseModelAdapter):
         default_path, new_data_path = change_dataset_directories(model_entity=self.model_entity)
 
         # Convert Train and Validation to coco format
-        dtlpy_to_coco(input_path=default_path, output_path=new_data_path, dataset=self.model_entity.dataset)
+        dtlpy_to_coco(
+            input_path=default_path,
+            output_path=new_data_path,
+            dataset=self.model_entity.dataset,
+            label_to_id_mapping=self.model_entity.label_to_id_map,
+        )
 
         self.exp.train_ann = 'train_ann_coco.json'
         self.exp.val_ann = 'val_ann_coco.json'
@@ -141,14 +139,16 @@ class ModelAdapter(dl.BaseModelAdapter):
                 self.__dict__.update(entries)
 
         # Reading config - for trainer
-        args = {'batch_size': self.configuration.get("batch_size", 4),
-                'resume': self.configuration.get("resume", False),  # For resume training - loading latest ckpt
-                'fp16': self.configuration.get("fp16", False),
-                'occupy': self.configuration.get("occupy", False),  # True for pre-allocate gpu memory for training
-                'logger': self.configuration.get("logger", 'tensorboard'),  # ['tensorboard','wandb']
-                'cache': self.configuration.get("cache", None),  # For cacheing img to ['ram','disc','None']
-                'ckpt': self.configuration.get("ckpt", None),  # ckpt file for loading to finetune the model
-                'experiment_name': self.exp.exp_name}
+        args = {
+            'batch_size': self.configuration.get("batch_size", 4),
+            'resume': self.configuration.get("resume", False),  # For resume training - loading latest ckpt
+            'fp16': self.configuration.get("fp16", False),
+            'occupy': self.configuration.get("occupy", False),  # True for pre-allocate gpu memory for training
+            'logger': self.configuration.get("logger", 'tensorboard'),  # ['tensorboard','wandb']
+            'cache': self.configuration.get("cache", None),  # For cacheing img to ['ram','disc','None']
+            'ckpt': self.configuration.get("ckpt", None),  # ckpt file for loading to finetune the model
+            'experiment_name': self.exp.exp_name,
+        }
 
         # Seed training
         if self.exp.seed is not None:
@@ -185,20 +185,29 @@ class ModelAdapter(dl.BaseModelAdapter):
             collection = dl.AnnotationCollection()
             if detections is not None:
                 for detection in detections:
-                    x0, y0, x1, y1, label, confidence = (detection["x0"], detection["y0"], detection["x1"],
-                                                         detection["y1"], detection["label"],
-                                                         detection["conf"])
+                    x0, y0, x1, y1, label, confidence = (
+                        detection["x0"],
+                        detection["y0"],
+                        detection["x1"],
+                        detection["y1"],
+                        detection["label"],
+                        detection["conf"],
+                    )
 
-                    collection.add(annotation_definition=dl.Box(left=max(x0, 0),
-                                                                top=max(y0, 0),
-                                                                right=min(x1, img.shape[1]),
-                                                                bottom=min(y1, img.shape[0]),
-                                                                label=label
-                                                                ),
-
-                                   model_info={'name': self.model_entity.name,
-                                               'model_id': self.model_entity.id,
-                                               'confidence': float(confidence)})
+                    collection.add(
+                        annotation_definition=dl.Box(
+                            left=max(x0, 0),
+                            top=max(y0, 0),
+                            right=min(x1, img.shape[1]),
+                            bottom=min(y1, img.shape[0]),
+                            label=label,
+                        ),
+                        model_info={
+                            'name': self.model_entity.name,
+                            'model_id': self.model_entity.id,
+                            'confidence': float(confidence),
+                        },
+                    )
 
                 batch_annotations.append(collection)
 
@@ -235,23 +244,20 @@ class ModelAdapter(dl.BaseModelAdapter):
                 num_classes = len(self.model_entity.id_to_label_map.values())
 
             # NMS - POST PROCESSING STEP
-            outputs = postprocess(
-                outputs, num_classes, self.exp.test_conf,
-                self.exp.nmsthre, class_agnostic=True
-            )
+            outputs = postprocess(outputs, num_classes, self.exp.test_conf, self.exp.nmsthre, class_agnostic=True)
             logger.info("Infer time: {:.4f}s".format(time.time() - t0))
 
         if outputs[0] is None:
             logger.warning(
-                "Model's predictions confidence is less than confidence threshold - therefore no annotations found! ")
+                "Model's predictions confidence is less than confidence threshold - therefore no annotations found! "
+            )
             return None
         else:
             bboxes, scores, cls = self.inference_results(output=outputs[0], img_info=img_info)
 
-            box_annotations = self.create_box_annotations(boxes=bboxes,
-                                                          scores=scores,
-                                                          cls_ids=cls,
-                                                          cls_names=self.model_entity.id_to_label_map)
+            box_annotations = self.create_box_annotations(
+                boxes=bboxes, scores=scores, cls_ids=cls, cls_names=self.model_entity.id_to_label_map
+            )
 
         return box_annotations
 
@@ -293,4 +299,3 @@ class ModelAdapter(dl.BaseModelAdapter):
             img = None
         os.remove(path)
         return img
-
