@@ -34,8 +34,7 @@ if __name__ == "__main__":
     dataset = project.datasets.get(dataset_name='yolox-for-tests')
     # model = project.models.get(model_name="new-yolox-debugger")
     model = project.models.get(model_id='6602f1a9c87f3f1045671674')
-    #
     test_train(model=model)
-
+    
     # test_predict(dataset=dataset, model=model)
 
