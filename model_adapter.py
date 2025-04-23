@@ -177,34 +177,55 @@ class ModelAdapter(dl.BaseModelAdapter):
 
                 current_epoch = custom_self.epoch + 1
                 logger.info(f"Custom metrics collection for epoch {current_epoch}")
-                
+
                 if custom_self.rank == 0:
                     metrics = {}
-                    if hasattr(custom_self, 'evaluator') and hasattr(custom_self.evaluator, 'eval_results'):
-                        eval_results = custom_self.evaluator.eval_results
-                        if 'COCO_AP' in eval_results:
-                            metrics['val/mAP50-95(B)'] = eval_results['COCO_AP']
-                        if 'COCO_AP50' in eval_results:
-                            metrics['val/mAP50(B)'] = eval_results['COCO_AP50']
-                        if 'COCO_AP75' in eval_results:
-                            metrics['val/mAP75'] = eval_results['COCO_AP75']
+                    
+                    metrics['val/best_AP50-95(B)'] = getattr(custom_self, 'best_ap', 0.0) 
+
+                    current_lr = 0.0
+                    if hasattr(custom_self, 'optimizer') and custom_self.optimizer.param_groups:
+                        try:
+                            current_lr = custom_self.optimizer.param_groups[0]['lr']
+                        except (KeyError, IndexError, TypeError) as e:
+                            logger.warning(f"Could not retrieve learning rate: {e}")
+                    metrics['train/learning_rate'] = float(current_lr)
 
                     if hasattr(custom_self, 'meter'):
                         loss_meter = custom_self.meter.get_filtered_meter("loss")
-                        metrics['train/box_loss'] = loss_meter.get('loss_box', 0).avg
-                        metrics['train/cls_loss'] = loss_meter.get('loss_cls', 0).avg
-                        metrics['train/obj_loss'] = loss_meter.get('loss_obj', 0).avg
-                        metrics['train/total_loss'] = loss_meter.get('loss', 0).avg
+                        def get_avg_float(meter, key):
+                            metric = meter.get(key)
+                            if metric and hasattr(metric, '_total') and hasattr(metric, '_count'): 
+                                try:
+                                    metric_sum = metric._total 
+                                    metric_count = metric._count
+                                    if metric_count == 0: return 0.0
+                                    avg_val = metric_sum / metric_count 
+                                    if isinstance(avg_val, torch.Tensor):
+                                        return avg_val.cpu().item() if avg_val.is_cuda else avg_val.item()
+                                    else:
+                                        return float(avg_val)
+                                except Exception as e:
+                                    logger.error(f"Error processing metric '{key}' _total/_count: {e}", exc_info=True)
+                                    return 0.0
+                            else:
+                                logger.warning(f"Metric '{key}' or its '_total'/'_count' attributes not found.") 
+                                return 0.0
+
+                        metrics['train/box_loss'] = get_avg_float(loss_meter, 'iou_loss')
+                        metrics['train/cls_loss'] = get_avg_float(loss_meter, 'cls_loss')
+                        metrics['train/obj_loss'] = get_avg_float(loss_meter, 'conf_loss')
+                        metrics['train/total_loss'] = get_avg_float(loss_meter, 'total_loss')
 
                     samples = []
+
                     NaN_dict = {
-                        'box_loss': 1,
-                        'cls_loss': 1,
-                        'obj_loss': 1,
-                        'total_loss': 1,
-                        'mAP50(B)': 0,
-                        'mAP50-95(B)': 0,
-                        'mAP75': 0,
+                        'box_loss': 1.0, 
+                        'cls_loss': 1.0,
+                        'obj_loss': 1.0,
+                        'total_loss': 1.0,
+                        'best_AP50-95(B)': 0.0,
+                        'learning_rate': 0.0
                     }
 
                     for metric_name, value in metrics.items():
@@ -219,21 +240,21 @@ class ModelAdapter(dl.BaseModelAdapter):
                             items = self.model_entity.metrics.list(filters=filters)
 
                             if items.items_count > 0:
-                                value = items.items[0].y
+                                value = float(items.items[0].y) 
                             else:
-                                value = NaN_dict.get(figure, 0)
+                                value = NaN_dict.get(figure, 0.0) 
                             logger.warning(f'Value is not finite. For figure {figure} and legend {legend} using value {value}')
 
                         samples.append(dl.PlotSample(figure=figure,
                                                     legend=legend,
                                                     x=current_epoch,
-                                                    y=value))
+                                                    y=float(value))) 
 
                     if samples:
                         self.model_entity.metrics.create(samples=samples,
                                                         dataset_id=self.model_entity.dataset_id)
                     self.configuration['current_epoch'] = current_epoch
-                    self.save_to_model(local_path=output_path, cleanup=False)
+                    self.save_to_model(local_path=output_path, cleanup=False) 
 
         def custom_get_trainer(args):
             return CustomTrainer(self.exp, args)
