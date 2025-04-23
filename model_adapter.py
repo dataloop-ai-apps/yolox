@@ -170,16 +170,11 @@ class ModelAdapter(dl.BaseModelAdapter):
         args = Args(**args)
         self.exp.num_classes = self.configuration.get("num_classes", len(self.model_entity.labels))
         self.exp.max_epoch = self.configuration.get("epoch", 10)
-
-        # Store the original after_epoch method before initializing the trainer
-        original_after_epoch = self.exp.get_trainer(args).after_epoch
         
-        # Create a custom trainer class that extends the original one
         class CustomTrainer(type(self.exp.get_trainer(args))):
             def after_epoch(custom_self):
-                original_after_epoch.__get__(custom_self, type(custom_self))()
-                
-                # Your custom metrics logic
+                super(CustomTrainer, custom_self).after_epoch()
+
                 current_epoch = custom_self.epoch + 1
                 logger.info(f"Custom metrics collection for epoch {current_epoch}")
                 
@@ -240,14 +235,10 @@ class ModelAdapter(dl.BaseModelAdapter):
                     self.configuration['current_epoch'] = current_epoch
                     self.save_to_model(local_path=output_path, cleanup=False)
 
-        # Override the get_trainer method in your experiment to return our custom trainer
-        original_get_trainer = self.exp.get_trainer
         def custom_get_trainer(args):
             return CustomTrainer(self.exp, args)
         
-        self.exp.get_trainer = custom_get_trainer
-        
-        # Now create the trainer with our custom class
+        self.exp.get_trainer = custom_get_trainer 
         self.trainer = self.exp.get_trainer(args)
         
         logger.info("Custom trainer with metrics collection has been set up")
