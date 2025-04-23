@@ -180,8 +180,6 @@ class ModelAdapter(dl.BaseModelAdapter):
 
                 if custom_self.rank == 0:
                     metrics = {}
-                    
-                    metrics['val/best_AP50-95(B)'] = getattr(custom_self, 'best_ap', 0.0) 
 
                     current_lr = 0.0
                     if hasattr(custom_self, 'optimizer') and custom_self.optimizer.param_groups:
@@ -224,7 +222,6 @@ class ModelAdapter(dl.BaseModelAdapter):
                         'cls_loss': 1.0,
                         'obj_loss': 1.0,
                         'total_loss': 1.0,
-                        'best_AP50-95(B)': 0.0,
                         'learning_rate': 0.0
                     }
 
