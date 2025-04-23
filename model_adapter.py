@@ -177,8 +177,7 @@ class ModelAdapter(dl.BaseModelAdapter):
         # Create a custom trainer class that extends the original one
         class CustomTrainer(type(self.exp.get_trainer(args))):
             def after_epoch(custom_self):
-                # Call the original after_epoch method
-                original_after_epoch(custom_self)
+                original_after_epoch.__get__(custom_self, type(custom_self))()
                 
                 # Your custom metrics logic
                 current_epoch = custom_self.epoch + 1
@@ -186,8 +185,8 @@ class ModelAdapter(dl.BaseModelAdapter):
                 
                 if custom_self.rank == 0:
                     metrics = {}
-                    if hasattr(custom_self, 'evaluate_results') and custom_self.evaluate_results is not None:
-                        eval_results = custom_self.evaluate_results
+                    if hasattr(custom_self, 'evaluator') and hasattr(custom_self.evaluator, 'eval_results'):
+                        eval_results = custom_self.evaluator.eval_results
                         if 'COCO_AP' in eval_results:
                             metrics['val/mAP50-95(B)'] = eval_results['COCO_AP']
                         if 'COCO_AP50' in eval_results:
@@ -195,11 +194,12 @@ class ModelAdapter(dl.BaseModelAdapter):
                         if 'COCO_AP75' in eval_results:
                             metrics['val/mAP75'] = eval_results['COCO_AP75']
 
-                    if hasattr(custom_self, 'loss_meter'):
-                        metrics['train/box_loss'] = custom_self.loss_meter.avg_statistics.get('loss_box', 0)
-                        metrics['train/cls_loss'] = custom_self.loss_meter.avg_statistics.get('loss_cls', 0)
-                        metrics['train/obj_loss'] = custom_self.loss_meter.avg_statistics.get('loss_obj', 0)
-                        metrics['train/total_loss'] = custom_self.loss_meter.avg_statistics.get('loss', 0)
+                    if hasattr(custom_self, 'meter'):
+                        loss_meter = custom_self.meter.get_filtered_meter("loss")
+                        metrics['train/box_loss'] = loss_meter.get('loss_box', 0).avg
+                        metrics['train/cls_loss'] = loss_meter.get('loss_cls', 0).avg
+                        metrics['train/obj_loss'] = loss_meter.get('loss_obj', 0).avg
+                        metrics['train/total_loss'] = loss_meter.get('loss', 0).avg
 
                     samples = []
                     NaN_dict = {
