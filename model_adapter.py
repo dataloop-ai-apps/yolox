@@ -5,7 +5,6 @@ import random
 import cv2
 import urllib.request
 from glob import glob
-import numpy as np
 
 from yolox.data import ValTransform, TrainTransform
 from yolox.utils import configure_nccl, configure_omp
@@ -175,96 +174,80 @@ class ModelAdapter(dl.BaseModelAdapter):
         logger.info(f"Trainer device: {self.trainer.device}, Trainer local rank: {self.trainer.local_rank}")
         logger.info(f"Trainer is_distributed: {self.trainer.is_distributed}, Trainer rank: {self.trainer.rank}")
         logger.info(f"TORCH: {torch.__version__}")
-        
-        # Get the FaaS callback if provided
-        faas_callback = kwargs.get('on_epoch_end_callback')
         self.current_epoch = 0
-        
-        # Store original after_epoch function to call it later
-        original_after_epoch = self.trainer.after_epoch
-        
-        # Define a new after_epoch function that includes metrics tracking
-        def after_epoch_with_metrics(trainer):
-            # Call the original after_epoch function first
-            original_after_epoch()
-            
-            # Update current epoch
-            self.current_epoch = trainer.epoch + 1
-            
-            # Collect metrics
-            metrics = {}
-            if hasattr(trainer, 'evaluate_results') and trainer.evaluate_results is not None:
-                # Extract evaluation metrics
-                eval_results = trainer.evaluate_results
-                if 'COCO_AP' in eval_results:
-                    metrics['val/mAP50-95(B)'] = eval_results['COCO_AP']
-                if 'COCO_AP50' in eval_results:
-                    metrics['val/mAP50(B)'] = eval_results['COCO_AP50']
-                if 'COCO_AP75' in eval_results:
-                    metrics['val/mAP75'] = eval_results['COCO_AP75']
-            
-            # Add training metrics
-            if hasattr(trainer, 'loss_meter'):
-                metrics['train/box_loss'] = trainer.loss_meter.avg_statistics.get('loss_box', 0)
-                metrics['train/cls_loss'] = trainer.loss_meter.avg_statistics.get('loss_cls', 0)
-                metrics['train/obj_loss'] = trainer.loss_meter.avg_statistics.get('loss_obj', 0)
-                metrics['train/total_loss'] = trainer.loss_meter.avg_statistics.get('loss', 0)
-            
-            # Call FaaS callback if provided
-            if faas_callback is not None:
-                faas_callback(self.current_epoch, self.exp.max_epoch)
-            
-            # Create samples for metrics
-            samples = []
-            NaN_dict = {
-                'box_loss': 1,
-                'cls_loss': 1,
-                'obj_loss': 1,
-                'total_loss': 1,
-                'mAP50(B)': 0,
-                'mAP50-95(B)': 0,
-                'mAP75': 0,
-            }
-            
-            for metric_name, value in metrics.items():
-                legend, figure = metric_name.split('/')
-                logger.info(f'Updating figure {figure} with legend {legend} with value {value}')
-                
-                if not np.isfinite(value):
-                    filters = dl.Filters(resource=dl.FiltersResource.METRICS)
-                    filters.add(field='modelId', values=self.model_entity.id)
-                    filters.add(field='figure', values=figure)
-                    filters.add(field='data.x', values=self.current_epoch - 1)
-                    items = self.model_entity.metrics.list(filters=filters)
 
-                    if items.items_count > 0:
-                        value = items.items[0].y
-                    else:
-                        value = NaN_dict.get(figure, 0)
-                    logger.warning(f'Value is not finite. For figure {figure} and legend {legend} using value {value}')
-                
-                samples.append(dl.PlotSample(figure=figure,
-                                            legend=legend,
-                                            x=self.current_epoch,
-                                            y=value))
-            
-            # Create metrics in the model entity
-            if samples:
-                self.model_entity.metrics.create(samples=samples,
-                                                dataset_id=self.model_entity.dataset_id)
-            
-            # Update configuration with current epoch
-            self.configuration['current_epoch'] = self.current_epoch
-            
-            # Save model checkpoint after each epoch
-            if trainer.rank == 0:  # Only save on main process
-                self.save(local_path=output_path)
-        
-        # Replace the trainer's after_epoch function with our custom one
-        self.trainer.after_epoch = lambda: after_epoch_with_metrics(self.trainer)
-        
-        # Start training
-        self.trainer.train()
+        original_after_epoch = self.trainer.after_epoch
+
+        def after_epoch_with_metrics():
+            original_after_epoch()
+
+            self.current_epoch = self.trainer.epoch + 1
+            logger.debug(f"Epoch {self.current_epoch} finished.")
+
+            if self.trainer.rank == 0:
+                metrics = {}
+                if hasattr(self.trainer, 'evaluate_results') and self.trainer.evaluate_results is not None:
+                    eval_results = self.trainer.evaluate_results
+                    if 'COCO_AP' in eval_results:
+                        metrics['val/mAP50-95(B)'] = eval_results['COCO_AP']
+                    if 'COCO_AP50' in eval_results:
+                        metrics['val/mAP50(B)'] = eval_results['COCO_AP50']
+                    if 'COCO_AP75' in eval_results:
+                        metrics['val/mAP75'] = eval_results['COCO_AP75']
+
+                if hasattr(self.trainer, 'loss_meter'):
+                    metrics['train/box_loss'] = self.trainer.loss_meter.avg_statistics.get('loss_box', 0)
+                    metrics['train/cls_loss'] = self.trainer.loss_meter.avg_statistics.get('loss_cls', 0)
+                    metrics['train/obj_loss'] = self.trainer.loss_meter.avg_statistics.get('loss_obj', 0)
+                    metrics['train/total_loss'] = self.trainer.loss_meter.avg_statistics.get('loss', 0)
+
+                samples = []
+                NaN_dict = {
+                    'box_loss': 1,
+                    'cls_loss': 1,
+                    'obj_loss': 1,
+                    'total_loss': 1,
+                    'mAP50(B)': 0,
+                    'mAP50-95(B)': 0,
+                    'mAP75': 0,
+                }
+
+                for metric_name, value in metrics.items():
+                    legend, figure = metric_name.split('/')
+                    logger.info(f'Updating figure {figure} with legend {legend} with value {value}')
+
+                    if not np.isfinite(value):
+                        filters = dl.Filters(resource=dl.FiltersResource.METRICS)
+                        filters.add(field='modelId', values=self.model_entity.id)
+                        filters.add(field='figure', values=figure)
+                        filters.add(field='data.x', values=self.current_epoch - 1)
+                        items = self.model_entity.metrics.list(filters=filters)
+
+                        if items.items_count > 0:
+                            value = items.items[0].y
+                        else:
+                            value = NaN_dict.get(figure, 0)
+                        logger.warning(f'Value is not finite. For figure {figure} and legend {legend} using value {value}')
+
+                    samples.append(dl.PlotSample(figure=figure,
+                                                legend=legend,
+                                                x=self.current_epoch,
+                                                y=value))
+
+                if samples:
+                    self.model_entity.metrics.create(samples=samples,
+                                                    dataset_id=self.model_entity.dataset_id)
+                self.configuration['current_epoch'] = self.current_epoch
+                self.save_to_model(local_path=output_path, cleanup=False)
+
+        self.trainer.after_epoch = after_epoch_with_metrics
+
+        try:
+            self.trainer.train()
+            logger.info("Training finished successfully.")
+        except Exception as e:
+            logger.error(f"Error during self.trainer.train(): {e}", exc_info=True)
+            raise e
 
     def predict(self, batch, **kwargs):
         print('predicting batch of size: {}'.format(len(batch)))

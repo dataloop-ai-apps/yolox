@@ -16,6 +16,12 @@ def test_predict(dataset: dl.Dataset, model: dl.Model):
 
 
 def test_train(model: dl.Model):
+    model.metadata['system'] = {}
+    model.metadata['system']['subsets'] =  {'train': dl.Filters(field='dir', values='/train').prepare(),
+                                                  'validation': dl.Filters(field='dir', values='/validation').prepare()}
+    model.status = 'pre-trained'
+    model.update(True)
+
     adapter = ModelAdapter(model_entity=model)
     adapter.train_model(model=model)
 
@@ -33,7 +39,7 @@ if __name__ == "__main__":
     project = dl.projects.get(project_name='yolox-tests')
     dataset = project.datasets.get(dataset_name='yolox-for-tests')
     # model = project.models.get(model_name="new-yolox-debugger")
-    model = project.models.get(model_id='6602f1a9c87f3f1045671674')
+    model = project.models.get(model_id='6602fbb7c87f3fc383671678')
     test_train(model=model)
     
     # test_predict(dataset=dataset, model=model)
