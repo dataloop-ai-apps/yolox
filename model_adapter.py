@@ -212,11 +212,6 @@ class ModelAdapter(dl.BaseModelAdapter):
 
                 update_best_ckpt = custom_self.current_ap50_95 > custom_self.best_ap
                 custom_self.best_ap = max(custom_self.best_ap, custom_self.current_ap50_95)
-
-                if custom_self.rank == 0:
-                    if custom_self.args.logger == "tensorboard":
-                        custom_self.tblogger.add_scalar("val/COCOAP50", custom_self.current_ap50, custom_self.epoch + 1)
-                        custom_self.tblogger.add_scalar("val/COCOAP50_95", custom_self.current_ap50_95, custom_self.epoch + 1)
                 synchronize()
 
                 custom_self.save_ckpt("last_epoch", update_best_ckpt, ap=custom_self.current_ap50_95)
