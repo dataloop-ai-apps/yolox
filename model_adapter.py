@@ -217,7 +217,6 @@ class ModelAdapter(dl.BaseModelAdapter):
                     if custom_self.args.logger == "tensorboard":
                         custom_self.tblogger.add_scalar("val/COCOAP50", custom_self.current_ap50, custom_self.epoch + 1)
                         custom_self.tblogger.add_scalar("val/COCOAP50_95", custom_self.current_ap50_95, custom_self.epoch + 1)
-                    logger.info("\n" + summary)
                 synchronize()
 
                 custom_self.save_ckpt("last_epoch", update_best_ckpt, ap=custom_self.current_ap50_95)
@@ -229,7 +228,6 @@ class ModelAdapter(dl.BaseModelAdapter):
                 super(CustomTrainer, custom_self).after_epoch()
 
                 current_epoch = custom_self.epoch + 1
-                logger.info(f"Custom metrics collection for epoch {current_epoch}")
 
                 if custom_self.rank == 0:
                     metrics = {}
@@ -295,7 +293,6 @@ class ModelAdapter(dl.BaseModelAdapter):
                     for metric_name, value in metrics.items():
                         try:
                             legend, figure = metric_name.split('/')
-                            logger.info(f'Updating figure {figure} with legend {legend} with value {value}')
 
                             if not np.isfinite(value):
                                 filters = dl.Filters(resource=dl.FiltersResource.METRICS)
