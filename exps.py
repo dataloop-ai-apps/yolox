@@ -183,6 +183,7 @@ class DtlEvaluator(COCOEvaluator):
                 outputs = postprocess(
                     outputs, self.num_classes, self.confthre, self.nmsthre
                 )
+                data_list.extend(self.convert_to_coco_format(outputs, info_imgs, ids))
                 if is_time_record:
                     nms_end = time_synchronized()
                     nms_time += nms_end - infer_end
