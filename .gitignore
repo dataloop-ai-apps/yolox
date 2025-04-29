@@ -287,3 +287,5 @@ pyrightconfig.json
 /scripts
 *.whl
 test-wheel-env
+.vscode
+.idea
