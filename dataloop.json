@@ -1,7 +1,7 @@
 {
   "name": "yolox",
   "displayName": "YOLOX",
-  "version": "0.0.15",
+  "version": "0.0.16",
   "scope": "public",
   "description": "YOLO-X Model Application",
   "attributes": {
@@ -15,7 +15,7 @@
   "codebase": {
     "type": "git",
     "gitUrl": "https://github.com/dataloop-ai-apps/yolox.git",
-    "gitTag": "0.0.15"
+    "gitTag": "0.0.16"
   },
   "components": {
     "computeConfigs": [
