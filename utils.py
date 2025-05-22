@@ -4,7 +4,7 @@ import shutil
 import asyncio
 import dtlpy as dl
 from dtlpyconverters import services, coco_converters
-
+from PIL import Image
 
 def edit_ids(json_file, start_num):
     indicator = start_num
@@ -28,7 +28,7 @@ def edit_ids(json_file, start_num):
         json.dump(data, f, indent=4)
 
 
-def convert_json(input_file, ids_indicator, output_file):
+def convert_json(input_file, ids_indicator, output_file, filename_mapping, data_dir, name):
     edit_ids(json_file=input_file, start_num=ids_indicator)
     with open(input_file, 'r') as f:
         data = json.load(f)
@@ -37,18 +37,27 @@ def convert_json(input_file, ids_indicator, output_file):
     new_images = []
     new_annotations = []
     new_categories = data.get("categories", [])
-
+    
     for annotation in data["annotations"]:
         image_id = annotation["image_id"]
         if image_id not in images_dict:
             images_dict[image_id] = len(images_dict)
             image_info = data["images"][image_id]
+            original_name = image_info["file_name"]
+            if original_name in filename_mapping:
+                new_filename = filename_mapping[original_name]
+            else:
+                raise ValueError(f"Could not find mapping for file: {original_name}")
+            if image_info["width"] is None or image_info["height"] is None:
+                im = Image.open(os.path.join(data_dir, name, new_filename))
+                image_info["width"] = im.width
+                image_info["height"] = im.height
             new_images.append(
                 {
                     "id": images_dict[image_id],
                     "width": image_info["width"],
                     "height": image_info["height"],
-                    "file_name": image_info["file_name"],
+                    "file_name": new_filename,
                     "license": 1,
                 }
             )
@@ -75,12 +84,7 @@ def convert_json(input_file, ids_indicator, output_file):
         json.dump(new_data, f, indent=4)
 
 
-def change_dataset_directories(model_entity: dl.Model, default_path=None):
-    if default_path is None:
-        default_path = os.path.join(os.getcwd(), 'tmp', model_entity.id, 'datasets', model_entity.dataset.id)
-
-    new_path = os.path.join(os.getcwd(), 'datasets', model_entity.dataset.id)
-
+def change_dataset_directories(new_path, model_entity: dl.Model, default_path=None):
     # Create directories if they don't exist
     for path in [
         new_path,
@@ -91,15 +95,18 @@ def change_dataset_directories(model_entity: dl.Model, default_path=None):
         os.makedirs(path, exist_ok=True)
 
     # Move items to the new paths - move instead of copy to avoid re-downloading in the base model adapter
-    shutil.copytree(
-        src=os.path.join(default_path, 'train', 'items'), dst=os.path.join(new_path, 'train2017'), dirs_exist_ok=True
-    )
+    for item in os.listdir(os.path.join(default_path, 'train', 'items')):
+        shutil.move(
+            src=os.path.join(default_path, 'train', 'items', item),
+            dst=os.path.join(new_path, 'train2017', item)
+        )
 
-    shutil.copytree(
-        src=os.path.join(default_path, 'validation', 'items'), dst=os.path.join(new_path, 'val2017'), dirs_exist_ok=True
-    )
+    for item in os.listdir(os.path.join(default_path, 'validation', 'items')):
+        shutil.move(
+            src=os.path.join(default_path, 'validation', 'items', item),
+            dst=os.path.join(new_path, 'val2017', item)
+        )
 
-    return default_path, new_path
 
 
 def convert_dataset(input_path, output_path, dataset, label_to_id_mapping):
@@ -116,12 +123,16 @@ def convert_dataset(input_path, output_path, dataset, label_to_id_mapping):
         asyncio.run(conv.convert_dataset())
 
 
-def dtlpy_to_coco(input_path, output_path, dataset: dl.Dataset, label_to_id_mapping: dict, ids_indicator=0):
+def dtlpy_to_coco(input_path, 
+                  output_path, 
+                  dataset: dl.Dataset,
+                  label_to_id_mapping: dict,
+                  ids_indicator=0,
+                  filename_mapping=None):
     default_train_path = os.path.join(input_path, 'train', 'json')
     default_validation_path = os.path.join(input_path, 'validation', 'json')
 
     # Convert train and validations sets to coco format using dtlpy converters
-
     convert_dataset(
         input_path=default_train_path,
         output_path=default_train_path,
@@ -140,9 +151,15 @@ def dtlpy_to_coco(input_path, output_path, dataset: dl.Dataset, label_to_id_mapp
         input_file=os.path.join(default_train_path, 'coco.json'),
         ids_indicator=ids_indicator,
         output_file=os.path.join(output_path, 'annotations', 'train_ann_coco.json'),
+        filename_mapping=filename_mapping,
+        data_dir=output_path,
+        name='train2017',
     )
     convert_json(
         input_file=os.path.join(default_validation_path, 'coco.json'),
         ids_indicator=ids_indicator,
         output_file=os.path.join(output_path, 'annotations', 'val_ann_coco.json'),
+        filename_mapping=filename_mapping,
+        data_dir=output_path,
+        name='val2017',
     )
