@@ -35,6 +35,7 @@
       },
       {
         "name": "yolox-train-evaluate",
+        "executionTimeout": 72000,
         "runtime": {
           "podType": "gpu-t4",
           "concurrency": 1,
