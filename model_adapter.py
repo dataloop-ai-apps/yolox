@@ -38,11 +38,7 @@ class ModelAdapter(dl.BaseModelAdapter):
                 return DtlDataset(
                     data_dir=self.data_dir,
                     json_file=self.train_ann,
-                    img_size=self.i
-                  
-                  
-                  
-                  ut_size,
+                    img_size=self.input_size,
                     preproc=TrainTransform(max_labels=50, flip_prob=self.flip_prob, hsv_prob=self.hsv_prob),
                     cache=cache,
                     cache_type=cache_type,
