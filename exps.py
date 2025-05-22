@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 import torch.nn as nn
-
+from PIL import Image
 from yolox.exp import Exp as MyExp
 from yolox.data.datasets import COCODataset
 from yolox.evaluators import COCOEvaluator
@@ -11,7 +11,7 @@ import itertools
 from collections import ChainMap, defaultdict
 from tqdm import tqdm
 import time
-
+import os
 
 ###########################
 # EXPERIMENTS TO INHERIT #
@@ -212,17 +212,28 @@ class DtlDataset(COCODataset):
         img = self.coco.loadImgs(id_)[0]
         width = img["width"]
         height = img["height"]
+        if width is None or height is None:
+            im = Image.open(os.path.join(self.data_dir, self.name, img["file_name"]))
+            width = im.width
+            height = im.height
         anno_ids = self.coco.getAnnIds(imgIds=[int(id_)], iscrowd=False)
         annotations = self.coco.loadAnns(anno_ids)
         objs = []
         for obj in annotations:
-            x1 = np.max((0, obj["bbox"][0]))
-            y1 = np.max((0, obj["bbox"][1]))
-            x2 = np.min((width, x1 + np.max((0, obj["bbox"][2]))))
-            y2 = np.min((height, y1 + np.max((0, obj["bbox"][3]))))
-            if obj["area"] > 0 and x2 >= x1 and y2 >= y1:
-                obj["clean_bbox"] = [x1, y1, x2, y2]
-                objs.append(obj)
+            try:
+                # Skip annotations with invalid bbox
+                if "bbox" not in obj or len(obj["bbox"]) != 4 or any(x is None for x in obj["bbox"]):
+                    continue
+                
+                x1 = np.max((0, obj["bbox"][0]))
+                y1 = np.max((0, obj["bbox"][1]))
+                x2 = np.min((width, x1 + np.max((0, obj["bbox"][2]))))
+                y2 = np.min((height, y1 + np.max((0, obj["bbox"][3]))))
+                if obj["area"] > 0 and x2 >= x1 and y2 >= y1:
+                    obj["clean_bbox"] = [x1, y1, x2, y2]
+                    objs.append(obj)
+            except Exception as e:
+                print(f"Error loading annotation for image {id_}: {e}")
 
         num_objs = len(objs)
 

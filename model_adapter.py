@@ -3,9 +3,11 @@ import warnings
 import torch.backends.cudnn as cudnn
 import random
 import cv2
+import uuid
 import urllib.request
-from glob import glob
-import numpy as np
+import pathlib
+import shutil
+from concurrent.futures import ThreadPoolExecutor
 
 from yolox.data import ValTransform, TrainTransform
 from yolox.utils import configure_nccl, configure_omp, is_parallel, adjust_status
@@ -36,7 +38,11 @@ class ModelAdapter(dl.BaseModelAdapter):
                 return DtlDataset(
                     data_dir=self.data_dir,
                     json_file=self.train_ann,
-                    img_size=self.input_size,
+                    img_size=self.i
+                  
+                  
+                  
+                  ut_size,
                     preproc=TrainTransform(max_labels=50, flip_prob=self.flip_prob, hsv_prob=self.hsv_prob),
                     cache=cache,
                     cache_type=cache_type,
@@ -84,43 +90,101 @@ class ModelAdapter(dl.BaseModelAdapter):
             raise dl.exceptions.NotFound(f'Model path ({model_filename}) not found! model weights is required')
 
     @staticmethod
+    def _move_file_pair(json_file, item_file, json_path, items_path, pbar):
+        try:
+            random_prefix = str(uuid.uuid4())
+            new_json_name = f"{random_prefix}_{json_file.name}"
+            new_item_name = f"{random_prefix}_{item_file.name}"
+            shutil.move(str(json_file), str(json_path / new_json_name))
+            shutil.move(str(item_file), str(items_path / new_item_name))
+            return {item_file.relative_to(items_path).as_posix(): new_item_name}
+        except Exception as e:
+            logger.warning(f"Failed to move files {json_file} and {item_file}: {str(e)}")
+            return {}
+        finally:
+            pbar.update()
+
+    @staticmethod
     def move_annotation_files(data_path):
-        json_files = glob(os.path.join(data_path, 'json', '**/*.json'))
-        json_files += glob(os.path.join(data_path, 'json', '*.json'))
+        data_path = pathlib.Path(data_path)
+        json_path = data_path / 'json'
+        items_path = data_path / 'items'
 
-        if os.path.sep == '\\':
-            sub_path = '\\'.join(json_files[0].split('json\\')[-1].split('\\')[:-1])
-        else:
-            sub_path = '/'.join(json_files[0].split('json/')[-1].split('/')[:-1])
+        # Get all json files recursively
+        json_files = list(json_path.rglob('*.json'))
+        image_files = list(items_path.rglob('*'))
+        if not json_files:
+            raise Exception(f"No json files found in {json_path}")
+        images_hash = {f.relative_to(items_path).with_suffix('').as_posix(): f for f in image_files}
+        # Find pairs matching by relative path without extension
+        move_args = []
+        for json_file in json_files:
+            # Go over all json files from /json and get the matching /items (with any suffix, only same filename)
+            relative_path = json_file.relative_to(json_path)
+            relative_path_no_ext = relative_path.with_suffix('')
+            
+            # Find matching image file
+            matching_image = images_hash.get(relative_path_no_ext.as_posix(), None)
+            if matching_image is None:
+                logger.warning(f"No matching item file found for {json_file}")
+                continue
 
-        item_files = glob(os.path.join(data_path, 'items', sub_path, '*'))
+            move_args.append((json_file, matching_image, json_path, items_path))
 
-        for src, dst in zip([json_files, item_files], ['json', 'items']):
-            for src_file in src:
-                if not os.path.exists(os.path.join(data_path, dst, os.path.basename(src_file))):
-                    shutil.move(src_file, os.path.join(data_path, dst, sub_path, os.path.basename(src_file)))
+        # Process files in parallel
+        logger.info(f"Moving {len(move_args)} files in parallel")
+        pbar = tqdm(total=len(move_args), desc="Moving files")
+        pool = ThreadPoolExecutor(max_workers=10)
+        # Move files from nested structure to flat structure
+        filename_mapping = {}
+        futures = []
+        for args in move_args:
+            futures.append(pool.submit(ModelAdapter._move_file_pair, *args, pbar))
+        
+        # Collect results
+        for future in futures:
+            mapping = future.result()
+            filename_mapping.update(mapping)
+            
+        pool.shutdown()
+        pbar.close()
+
+        # Clean up empty directories
         for root, dirs, files in os.walk(data_path, topdown=False):
             for dir_name in dirs:
-                dir_path = os.path.join(root, dir_name)
-                if not os.listdir(dir_path):
-                    os.rmdir(dir_path)
+                dir_path = pathlib.Path(root) / dir_name
+                if not any(dir_path.iterdir()):
+                    dir_path.rmdir()
+                    
+        return filename_mapping
 
     def convert_from_dtlpy(self, data_path, **kwargs):
+        new_data_path = os.path.join(os.getcwd(), 'datasets', self.model_entity.dataset.id)
+        default_path = os.path.join(os.getcwd(), 'tmp', self.model_entity.id, 'datasets', self.model_entity.dataset.id)
 
-        self.move_annotation_files(os.path.join(data_path, 'train'))
-        self.move_annotation_files(os.path.join(data_path, 'validation'))
+        if not os.path.exists(new_data_path):
+            # Move annotation files from nested structure to flat structure
+            train_mapping = self.move_annotation_files(os.path.join(data_path, 'train'))
+            val_mapping = self.move_annotation_files(os.path.join(data_path, 'validation'))
+            
+            # Combine mappings
+            filename_mapping = {**train_mapping, **val_mapping}
 
-        # Set Dataset directories as yolox requires
-        default_path, new_data_path = change_dataset_directories(model_entity=self.model_entity)
+            # Set Dataset directories as yolox requires
+            change_dataset_directories(new_path=new_data_path, 
+                                                                    model_entity=self.model_entity,
+                                                                    default_path=default_path)
 
-        # Convert Train and Validation to coco format
-        dtlpy_to_coco(
-            input_path=default_path,
-            output_path=new_data_path,
-            dataset=self.model_entity.dataset,
-            label_to_id_mapping=self.model_entity.label_to_id_map,
-        )
-
+            # Convert Train and Validation to coco format
+            logger.info(f"Converting Train and Validation to coco format, in COCO folder structure")
+            dtlpy_to_coco(
+                input_path=default_path,
+                output_path=new_data_path,
+                dataset=self.model_entity.dataset,
+                label_to_id_mapping=self.model_entity.label_to_id_map,
+                filename_mapping=filename_mapping,
+            )
+            logger.info(f"Done. Train and Validation converted to coco format!")
         self.exp.train_ann = 'train_ann_coco.json'
         self.exp.val_ann = 'val_ann_coco.json'
         self.exp.data_dir = new_data_path
