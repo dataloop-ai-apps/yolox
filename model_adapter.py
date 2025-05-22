@@ -10,7 +10,7 @@ import shutil
 from concurrent.futures import ThreadPoolExecutor
 
 from yolox.data import ValTransform, TrainTransform
-from yolox.utils import configure_nccl, configure_omp
+from yolox.utils import configure_nccl, configure_omp, is_parallel, adjust_status
 
 from utils import *
 from exps import *
@@ -38,7 +38,11 @@ class ModelAdapter(dl.BaseModelAdapter):
                 return DtlDataset(
                     data_dir=self.data_dir,
                     json_file=self.train_ann,
-                    img_size=self.input_size,
+                    img_size=self.i
+                  
+                  
+                  
+                  ut_size,
                     preproc=TrainTransform(max_labels=50, flip_prob=self.flip_prob, hsv_prob=self.hsv_prob),
                     cache=cache,
                     cache_type=cache_type,
@@ -230,13 +234,171 @@ class ModelAdapter(dl.BaseModelAdapter):
         args = Args(**args)
         self.exp.num_classes = self.configuration.get("num_classes", len(self.model_entity.labels))
         self.exp.max_epoch = self.configuration.get("epoch", 10)
+
+        # Set the evaluation interval here
+        self.exp.eval_interval = 1
+        logger.info(f"Set experiment evaluation interval to: {self.exp.eval_interval}")
+
+        class CustomTrainer(type(self.exp.get_trainer(args))):
+
+            # Override evaluate_and_save_model to capture the results
+            def evaluate_and_save_model(custom_self):
+                if custom_self.use_model_ema:
+                    evalmodel = custom_self.ema_model.ema
+                else:
+                    evalmodel = custom_self.model
+                    if is_parallel(evalmodel):
+                        evalmodel = evalmodel.module
+
+                ap50_95, ap50 = 0.0, 0.0
+                summary = "Evaluation did not run or failed."
+                predictions = None
+
+                try:
+                    with adjust_status(evalmodel, training=False):
+                        eval_results = custom_self.exp.eval(
+                            evalmodel, custom_self.evaluator, custom_self.is_distributed, return_outputs=True
+                        )
+                        if eval_results and isinstance(eval_results, tuple) and len(eval_results) == 2:
+                             metrics_tuple, predictions = eval_results
+                             if isinstance(metrics_tuple, tuple) and len(metrics_tuple) >= 2:
+                                 ap50_95, ap50, summary = metrics_tuple[0], metrics_tuple[1], metrics_tuple[2] if len(metrics_tuple) > 2 else "Summary not available"
+                             else:
+                                 logger.warning(f"Unexpected structure for metrics tuple in eval results: {metrics_tuple}")
+                        else:
+                            logger.warning(f"Unexpected structure for eval results: {eval_results}")
+
+                except Exception as e:
+                    logger.error(f"Error during evaluation in custom evaluate_and_save_model: {e}", exc_info=True)
+
+                custom_self.current_ap50_95 = ap50_95
+                custom_self.current_ap50 = ap50
+
+                update_best_ckpt = custom_self.current_ap50_95 > custom_self.best_ap
+                custom_self.best_ap = max(custom_self.best_ap, custom_self.current_ap50_95)
+                synchronize()
+
+                custom_self.save_ckpt("last_epoch", update_best_ckpt, ap=custom_self.current_ap50_95)
+                if custom_self.save_history_ckpt:
+                    custom_self.save_ckpt(f"epoch_{custom_self.epoch + 1}", ap=custom_self.current_ap50_95)
+
+
+            def after_epoch(custom_self):
+                super(CustomTrainer, custom_self).after_epoch()
+
+                current_epoch = custom_self.epoch + 1
+
+                if custom_self.rank == 0:
+                    metrics = {}
+                    samples = []
+
+                    # --- Training Metrics ---
+                    current_lr = 0.0
+                    if hasattr(custom_self, 'optimizer') and custom_self.optimizer.param_groups:
+                        try:
+                            current_lr = custom_self.optimizer.param_groups[0]['lr']
+                        except (KeyError, IndexError, TypeError) as e:
+                            logger.warning(f"Could not retrieve learning rate: {e}")
+                    metrics['train/learning_rate'] = float(current_lr)
+
+                    if hasattr(custom_self, 'meter'):
+                        loss_meter = custom_self.meter.get_filtered_meter("loss")
+                        def get_avg_float(meter, key):
+                            metric = meter.get(key)
+                            if metric and hasattr(metric, '_total') and hasattr(metric, '_count'):
+                                try:
+                                    metric_sum = metric._total
+                                    metric_count = metric._count
+                                    if metric_count == 0: return 0.0
+                                    avg_val = metric_sum / metric_count
+                                    if isinstance(avg_val, torch.Tensor):
+                                        return avg_val.cpu().item() if avg_val.is_cuda else avg_val.item()
+                                    else:
+                                        return float(avg_val)
+                                except Exception as e:
+                                    logger.error(f"Error processing metric '{key}' _total/_count: {e}", exc_info=True)
+                                    return 0.0
+                            else:
+                                logger.warning(f"Metric '{key}' or its attributes ('_total'/'_count' or 'global_avg') not found.")
+                                return 0.0
+
+                        metrics['train/box_loss'] = get_avg_float(loss_meter, 'iou_loss')
+                        metrics['train/cls_loss'] = get_avg_float(loss_meter, 'cls_loss')
+                        metrics['train/obj_loss'] = get_avg_float(loss_meter, 'conf_loss')
+                        metrics['train/total_loss'] = get_avg_float(loss_meter, 'total_loss')
+                    else:
+                         logger.warning("Trainer 'meter' attribute not found. Cannot log training losses.")
+
+
+                    # --- Validation Metrics ---
+                    val_ap50_95 = getattr(custom_self, 'current_ap50_95', 0.0)
+                    val_ap50 = getattr(custom_self, 'current_ap50', 0.0)
+
+                    metrics['validation/mAP@0.5'] = float(val_ap50)
+                    metrics['validation/mAP@0.5:0.95'] = float(val_ap50_95)
+
+                    logger.info(f"Epoch {current_epoch} Metrics to log: {metrics}")
+
+                    NaN_dict = {
+                        'box_loss': 1.0,
+                        'cls_loss': 1.0,
+                        'obj_loss': 1.0,
+                        'total_loss': 1.0,
+                        'learning_rate': 0.0,
+                        'mAP@0.5': 0.0,
+                        'mAP@0.5:0.95': 0.0
+                    }
+
+                    for metric_name, value in metrics.items():
+                        try:
+                            legend, figure = metric_name.split('/')
+
+                            if not np.isfinite(value):
+                                filters = dl.Filters(resource=dl.FiltersResource.METRICS)
+                                filters.add(field='modelId', values=self.model_entity.id)
+                                filters.add(field='figure', values=figure)
+                                filters.add(field='legend', values=legend)
+                                filters.add(field='data.x', values=current_epoch - 1)
+                                items = self.model_entity.metrics.list(filters=filters)
+
+                                if items.items_count > 0:
+                                    value = float(items.items[0].y)
+                                else:
+                                    value = NaN_dict.get(figure, 0.0)
+                                    logger.warning(f'Using default value from NaN_dict: {value}')
+
+                            samples.append(dl.PlotSample(figure=figure,
+                                                        legend=legend,
+                                                        x=current_epoch,
+                                                        y=float(value)))
+                        except Exception as e:
+                             logger.error(f"Error processing or creating plot sample for metric '{metric_name}': {e}", exc_info=True)
+
+
+                    if samples:
+                        try:
+                            self.model_entity.metrics.create(samples=samples,
+                                                            dataset_id=self.model_entity.dataset_id)
+                            logger.info(f"Successfully created {len(samples)} metric samples for epoch {current_epoch}.")
+                        except Exception as e:
+                             logger.error(f"Failed to create metrics for epoch {current_epoch}: {e}", exc_info=True)
+
+                    self.configuration['current_epoch'] = current_epoch
+
+        def custom_get_trainer(args):
+            return CustomTrainer(self.exp, args)
+
+        self.exp.get_trainer = custom_get_trainer
         self.trainer = self.exp.get_trainer(args)
 
-        logger.info(f"Trainer device: {self.trainer.device}, Trainer local rank: {self.trainer.local_rank}")
-        logger.info(f"Trainer is_distributed: {self.trainer.is_distributed}, Trainer rank: {self.trainer.rank}")
-        logger.info(f"TORCH: {torch.__version__}")
+        logger.info("Custom trainer with metrics collection has been set up")
 
-        self.trainer.train()
+        try:
+            self.trainer.train()
+            logger.info("Training finished successfully.")
+        except Exception as e:
+            logger.error(f"Error during self.trainer.train(): {e}", exc_info=True)
+            raise e
 
     def predict(self, batch, **kwargs):
         print('predicting batch of size: {}'.format(len(batch)))

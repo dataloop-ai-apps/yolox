@@ -25,6 +25,18 @@ Dataloop platform. The dataset should
 have [directories](https://developers.dataloop.ai/tutorials/data_management/manage_datasets/chapter/#create-directory)
 containing its training and validation subsets.
 
+## Available Models
+
+YOLOX comes in several variants to accommodate different performance and resource requirements:
+
+- **YOLOX-Tiny**: Smallest model, ideal for resource-constrained environments
+- **YOLOX-S**: Small model with good balance of performance and speed
+- **YOLOX-M**: Medium-sized model with improved accuracy
+- **YOLOX-L**: Large model with higher accuracy
+- **YOLOX-XL**: Extra large model with the highest accuracy
+
+All models are pre-trained on the COCO dataset and can detect 80 different object classes.
+
 ## Cloning
 
 For instruction how to clone the pretrained model for prediction
@@ -34,6 +46,7 @@ click [here](https://developers.dataloop.ai/tutorials/model_management/ai_librar
 
 For fine tuning on a custom dataset,
 click [here](https://developers.dataloop.ai/tutorials/model_management/ai_library/chapter/#finetune-on-a-custom-dataset)
+Please note that the model should be trained using GPU.
 
 ### Editing the configuration
 
@@ -44,12 +57,18 @@ information.
 
 The basic configurations included are:
 
-* ```epochs```: number of epochs to train the model (default: 10)
-* ```batch_size```: batch size to be used during the training (default: 4)
-* ```resume```: boolean, for resume training - loading latest ckpt (default: ```False```)
-* ```logger```:  logger type: tensorboard or wandb (default: ```tensorboard```)
-* ```cache```: For cacheing img to ['ram','disc','None'] (default ```None```)
-* ```ckpt```: ckpt file for loading to finetune the model (default ```None```)
+* ```weights_filename```: Name of the weights file (e.g., "yolox_tiny.pth")
+* ```checkpoint_url```: URL to download the model weights
+* ```exp_class_name```: Experiment class name (TinyExp, SmallExp, MediumExp, LargeExp, XLargeExp)
+* ```epochs```: Number of epochs to train the model (default: 10)
+* ```batch_size```: Batch size to be used during the training (default: 4)
+* ```conf_thres```: Confidence threshold for detections (default: 0.25)
+* ```resume```: Boolean, for resume training - loading latest checkpoint (default: ```False```)
+* ```fp16```: Enable mixed precision training (default: ```False```)
+* ```occupy```: Preemptive occupation of GPU memory (default: ```False```)
+* ```logger```: Logger type: tensorboard or wandb (default: ```tensorboard```)
+* ```cache```: For caching images to ['ram','disc','None'] (default: ```None```)
+* ```ckpt```: Checkpoint file for loading to finetune the model (default: ```None```)
 
 ## Deployment
 
