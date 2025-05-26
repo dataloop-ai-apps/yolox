@@ -194,6 +194,7 @@ class ModelAdapter(dl.BaseModelAdapter):
         logger.info(f"Saved state dict at {os.path.join(self.trainer.file_name, 'best_ckpt.pth')}")
 
     def train(self, data_path, output_path, **kwargs):
+        on_epoch_end_callback = kwargs.get('on_epoch_end_callback', None)
         # Creating args class for passing config for the experiment's trainer
         class Args:
             def __init__(self, **entries):
@@ -228,8 +229,9 @@ class ModelAdapter(dl.BaseModelAdapter):
         cudnn.benchmark = True
 
         args = Args(**args)
+        max_epoch = self.configuration.get("epoch", 10)
         self.exp.num_classes = self.configuration.get("num_classes", len(self.model_entity.labels))
-        self.exp.max_epoch = self.configuration.get("epoch", 10)
+        self.exp.max_epoch = max_epoch
 
         # Set the evaluation interval here
         self.exp.eval_interval = 1
@@ -283,7 +285,8 @@ class ModelAdapter(dl.BaseModelAdapter):
                 super(CustomTrainer, custom_self).after_epoch()
 
                 current_epoch = custom_self.epoch + 1
-
+                if on_epoch_end_callback:
+                    on_epoch_end_callback(i_epoch=current_epoch, n_epoch=max_epoch)
                 if custom_self.rank == 0:
                     metrics = {}
                     samples = []
