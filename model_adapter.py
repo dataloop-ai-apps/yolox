@@ -239,6 +239,12 @@ class ModelAdapter(dl.BaseModelAdapter):
 
         class CustomTrainer(type(self.exp.get_trainer(args))):
 
+            def __init__(self, exp, args):
+                super().__init__(exp, args)
+                # Initialize ema_model attribute to None if not present
+                if not hasattr(self, 'ema_model'):
+                    self.ema_model = None
+
             # Override evaluate_and_save_model to capture the results
             def evaluate_and_save_model(custom_self):
                 if custom_self.use_model_ema:
