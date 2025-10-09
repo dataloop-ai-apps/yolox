@@ -466,10 +466,7 @@ class ModelAdapter(dl.BaseModelAdapter):
             if decoder is not None:
                 outputs = decoder(outputs, dtype=outputs.type())
 
-            try:
-                num_classes = len(self.model_entity.dataset.labels)
-            except RuntimeError:
-                num_classes = len(self.model_entity.id_to_label_map.values())
+            num_classes = len(self.model_entity.id_to_label_map.values())
 
             # NMS - POST PROCESSING STEP
             outputs = postprocess(outputs, num_classes, self.exp.test_conf, self.exp.nmsthre, class_agnostic=True)
