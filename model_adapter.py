@@ -5,6 +5,7 @@ import random
 import cv2
 import uuid
 import urllib.request
+import urllib.parse
 import pathlib
 import shutil
 from concurrent.futures import ThreadPoolExecutor
@@ -69,6 +70,9 @@ class ModelAdapter(dl.BaseModelAdapter):
         # Load weights from url
         if not os.path.isfile(model_filename):
             if checkpoint_url is not None:
+                parsed = urllib.parse.urlparse(checkpoint_url)
+                if parsed.scheme not in ("https", "http"):
+                    raise ValueError("Only HTTP(S) checkpoint URLs are supported")
                 logger.info("Loading weights from url")
                 os.makedirs(local_path, exist_ok=True)
                 logger.info("created local_path dir")
@@ -76,11 +80,11 @@ class ModelAdapter(dl.BaseModelAdapter):
                     checkpoint_url, os.path.join(local_path, self.configuration.get('weights_filename'))
                 )
             else:
-                raise Exception("checkpoints weights were not loaded! URL not found")
+                raise ValueError("Checkpoint weights not found and no URL configured")
 
         if os.path.exists(model_filename):
             logger.info("Loading saved weights")
-            weights = torch.load(model_filename, map_location=self.device)
+            weights = torch.load(model_filename, map_location=self.device, weights_only=True)
             self.model.load_state_dict(weights["model"])
         else:
             raise dl.exceptions.NotFound(f'Model path ({model_filename}) not found! model weights is required')
@@ -95,7 +99,7 @@ class ModelAdapter(dl.BaseModelAdapter):
             shutil.move(str(item_file), str(items_path / new_item_name))
             return {item_file.relative_to(items_path).as_posix(): new_item_name}
         except Exception as e:
-            logger.warning(f"Failed to move files {json_file} and {item_file}: {str(e)}")
+            logger.warning("Failed to move files: %s", type(e).__name__)
             return {}
         finally:
             pbar.update()
@@ -273,7 +277,7 @@ class ModelAdapter(dl.BaseModelAdapter):
                             logger.warning(f"Unexpected structure for eval results: {eval_results}")
 
                 except Exception as e:
-                    logger.error(f"Error during evaluation in custom evaluate_and_save_model: {e}", exc_info=True)
+                    logger.error("Error during evaluation in custom evaluate_and_save_model: %s", type(e).__name__)
 
                 custom_self.current_ap50_95 = ap50_95
                 custom_self.current_ap50 = ap50
@@ -321,7 +325,7 @@ class ModelAdapter(dl.BaseModelAdapter):
                                     else:
                                         return float(avg_val)
                                 except Exception as e:
-                                    logger.error(f"Error processing metric '{key}' _total/_count: {e}", exc_info=True)
+                                    logger.error("Error processing metric '%s' _total/_count: %s", key, type(e).__name__)
                                     return 0.0
                             else:
                                 logger.warning(f"Metric '{key}' or its attributes ('_total'/'_count' or 'global_avg') not found.")
@@ -377,7 +381,7 @@ class ModelAdapter(dl.BaseModelAdapter):
                                                         x=current_epoch,
                                                         y=float(value)))
                         except Exception as e:
-                             logger.error(f"Error processing or creating plot sample for metric '{metric_name}': {e}", exc_info=True)
+                             logger.error("Error processing or creating plot sample for metric '%s': %s", metric_name, type(e).__name__)
 
 
                     if samples:
@@ -386,7 +390,7 @@ class ModelAdapter(dl.BaseModelAdapter):
                                                             dataset_id=self.model_entity.dataset_id)
                             logger.info(f"Successfully created {len(samples)} metric samples for epoch {current_epoch}.")
                         except Exception as e:
-                             logger.error(f"Failed to create metrics for epoch {current_epoch}: {e}", exc_info=True)
+                             logger.error("Failed to create metrics for epoch %d: %s", current_epoch, type(e).__name__)
 
                     self.configuration['current_epoch'] = current_epoch
 
@@ -402,11 +406,11 @@ class ModelAdapter(dl.BaseModelAdapter):
             self.trainer.train()
             logger.info("Training finished successfully.")
         except Exception as e:
-            logger.error(f"Error during self.trainer.train(): {e}", exc_info=True)
-            raise e
+            logger.error("Error during self.trainer.train(): %s", type(e).__name__)
+            raise
 
     def predict(self, batch, **kwargs):
-        print('predicting batch of size: {}'.format(len(batch)))
+        logger.info('predicting batch of size: %d', len(batch))
         batch_annotations = list()
         for img in batch:
             detections = self.inference(img)
