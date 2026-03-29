@@ -7,11 +7,14 @@ from yolox.data.datasets import COCODataset
 from yolox.evaluators import COCOEvaluator
 from yolox.utils import (gather, is_main_process, postprocess, synchronize, time_synchronized)
 
+import logging
 import itertools
 from collections import ChainMap, defaultdict
 from tqdm import tqdm
 import time
 import os
+
+logger = logging.getLogger('Exps')
 
 ###########################
 # EXPERIMENTS TO INHERIT #
@@ -112,13 +115,17 @@ class XLargeExp(MyExp):
 # DYNAMIC CLASS FOR INHERIT #
 #############################
 
+_ALLOWED_EXP_CLASSES = {"TinyExp", "NanoExp", "SmallExp", "MediumExp", "LargeExp", "XLargeExp"}
+
+
 class DynamicClassCreator:
     def __init__(self, class_name):
-        # Ensure a class name is provided - type string
         if not isinstance(class_name, str):
             raise ValueError("Invalid class name - must be a string")
 
-        # Retrieve the actual base class based on its name
+        if class_name not in _ALLOWED_EXP_CLASSES:
+            raise ValueError(f"Class name '{class_name}' is not in the allowed experiment classes")
+
         base_class = globals().get(class_name)
 
         if not base_class:
@@ -233,7 +240,7 @@ class DtlDataset(COCODataset):
                     obj["clean_bbox"] = [x1, y1, x2, y2]
                     objs.append(obj)
             except Exception as e:
-                print(f"Error loading annotation for image {id_}: {e}")
+                logger.warning("Error loading annotation for image %s", id_)
 
         num_objs = len(objs)
 
