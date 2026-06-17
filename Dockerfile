@@ -9,9 +9,10 @@ RUN apt-get update && \
 USER 1000
 WORKDIR /tmp
 ENV HOME=/tmp
-RUN pip install --no-cache-dir \
-    git+https://github.com/Megvii-BaseDetection/YOLOX.git \
-    git+https://github.com/dataloop-ai-apps/dtlpy-converters.git
+RUN ${DL_PYTHON_EXECUTABLE} -m pip install --no-cache-dir --user --no-build-isolation \
+        git+https://github.com/Megvii-BaseDetection/YOLOX.git && \
+    ${DL_PYTHON_EXECUTABLE} -m pip install --no-cache-dir --user \
+        git+https://github.com/dataloop-ai-apps/dtlpy-converters.git
 
 # docker build --no-cache -t gcr.io/viewo-g/piper/agent/runner/gpu/yolox:0.0.1 -f Dockerfile .
 # docker run -it gcr.io/viewo-g/piper/agent/runner/gpu/yolox:0.0.1 bash
