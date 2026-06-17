@@ -1,4 +1,4 @@
-FROM hub.dataloop.ai/dtlpy-runner-images/gpu:python3.10_cuda11.8_pytorch2
+FROM hub.dataloop.ai/dtlpy-runner-images/gpu:python3.12_cuda11.8_pytorch2
 
 USER root
 RUN apt-get update && \
