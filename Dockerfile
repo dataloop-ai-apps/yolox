@@ -5,11 +5,9 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-WORKDIR /tmp
-ENV HOME=/tmp
-RUN ${DL_PYTHON_EXECUTABLE} -m pip install --no-cache-dir --user --no-build-isolation \
+RUN ${DL_PYTHON_EXECUTABLE} -m pip install --no-cache-dir --no-build-isolation \
         git+https://github.com/Megvii-BaseDetection/YOLOX.git && \
-    ${DL_PYTHON_EXECUTABLE} -m pip install --no-cache-dir --user \
+    ${DL_PYTHON_EXECUTABLE} -m pip install --no-cache-dir \
         git+https://github.com/dataloop-ai-apps/dtlpy-converters.git
 
 # docker build --no-cache -t gcr.io/viewo-g/piper/agent/runner/gpu/yolox:0.0.5 -f Dockerfile .
