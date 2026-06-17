@@ -1,5 +1,8 @@
 FROM hub.dataloop.ai/dtlpy-runner-images/gpu:python3.10_cuda11.8_pytorch2
 
+ENV TORCHINDUCTOR_CACHE_DIR=/tmp/torchinductor_cache
+RUN mkdir -p /tmp/torchinductor_cache && chmod -R 777 /tmp/torchinductor_cache
+
 RUN apt-get update && \
     apt-get install -y curl cmake build-essential git && \
     apt-get clean && \
