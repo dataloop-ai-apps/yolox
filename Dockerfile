@@ -2,7 +2,7 @@ FROM hub.dataloop.ai/dtlpy-runner-images/gpu:python3.12_cuda11.8_pytorch2
 
 USER root
 RUN apt-get update && \
-    apt-get install -y curl && \
+    apt-get install -y curl cmake build-essential git && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
