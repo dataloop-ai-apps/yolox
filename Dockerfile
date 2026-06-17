@@ -12,6 +12,6 @@ RUN ${DL_PYTHON_EXECUTABLE} -m pip install --no-cache-dir --user --no-build-isol
     ${DL_PYTHON_EXECUTABLE} -m pip install --no-cache-dir --user \
         git+https://github.com/dataloop-ai-apps/dtlpy-converters.git
 
-# docker build --no-cache -t gcr.io/viewo-g/piper/agent/runner/gpu/yolox:0.0.4 -f Dockerfile .
-# docker run -it gcr.io/viewo-g/piper/agent/runner/gpu/yolox:0.0.4 bash
-# docker push gcr.io/viewo-g/piper/agent/runner/gpu/yolox:0.0.4
+# docker build --no-cache -t gcr.io/viewo-g/piper/agent/runner/gpu/yolox:0.0.5 -f Dockerfile .
+# docker run -it gcr.io/viewo-g/piper/agent/runner/gpu/yolox:0.0.5 bash
+# docker push gcr.io/viewo-g/piper/agent/runner/gpu/yolox:0.0.5
