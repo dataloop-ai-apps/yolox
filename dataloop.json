@@ -22,7 +22,7 @@
       {
         "name": "yolox-deploy",
         "runtime": {
-          "podType": "regular-xs",
+          "podType": "regular-s",
           "concurrency": 1,
           "runnerImage": "gcr.io/viewo-g/piper/agent/runner/apps/yolox:0.0.5",
           "autoscaler": {
