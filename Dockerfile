@@ -1,12 +1,10 @@
 FROM hub.dataloop.ai/dtlpy-runner-images/gpu:python3.10_cuda11.8_pytorch2
 
-USER root
 RUN apt-get update && \
     apt-get install -y curl cmake build-essential git && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-USER 1000
 WORKDIR /tmp
 ENV HOME=/tmp
 RUN ${DL_PYTHON_EXECUTABLE} -m pip install --no-cache-dir --user --no-build-isolation \
