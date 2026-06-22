@@ -6,7 +6,7 @@
   "description": "YOLO-X Model Application",
   "attributes": {
     "Provider": "Other",
-    "Deployed By": "Dataloop",
+    "Deployed By": "DDOE",
     "License": "Apache 2.0",
     "Category": "Model",
     "Computer Vision": "Object Detection",
@@ -70,29 +70,29 @@
               {
                 "type": "Model",
                 "name": "model",
-                "description": "Dataloop Model Entity"
+                "description": "DDOE Model Entity"
               },
               {
                 "type": "Dataset",
                 "name": "dataset",
-                "description": "Dataloop Dataset Entity"
+                "description": "DDOE Dataset Entity"
               },
               {
                 "type": "Json",
                 "name": "filters",
-                "description": "Dataloop Filter DQL"
+                "description": "DDOE Filter DQL"
               }
             ],
             "output": [
               {
                 "type": "Model",
                 "name": "model",
-                "description": "Dataloop Model Entity"
+                "description": "DDOE Model Entity"
               },
               {
                 "type": "Dataset",
                 "name": "dataset",
-                "description": "Dataloop Dataset Entity"
+                "description": "DDOE Dataset Entity"
               }
             ],
             "displayName": "Evaluate a Model",
@@ -131,14 +131,14 @@
               {
                 "type": "Model",
                 "name": "model",
-                "description": "Dataloop Model Entity"
+                "description": "DDOE Model Entity"
               }
             ],
             "output": [
               {
                 "type": "Model",
                 "name": "model",
-                "description": "Dataloop Model Entity"
+                "description": "DDOE Model Entity"
               }
             ],
             "displayName": "Train a Model",
@@ -156,7 +156,7 @@
               {
                 "type": "Json",
                 "name": "filters",
-                "description": "Dataloop Filter DQL"
+                "description": "DDOE Filter DQL"
               }
             ],
             "output": [
