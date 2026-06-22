@@ -3,7 +3,7 @@
 ## Introduction
 
 This repo is a model integration between [MegEngine implementation of PyTorch YOLOX](https://github.com/Megvii-BaseDetection/YOLOX) object 
-detection model and [Dataloop](https://dataloop.ai/).
+detection model and [DDOE](https://dataloop.ai/).
 
 YOLOX is another improved version of YOLO, with a simpler design but better performance. It aims to bridge the gap 
 between research and industrial communities. By leveraging advanced techniques such as anchor-free detection and dynamic
@@ -14,14 +14,14 @@ head construction, YOLOX achieves high performance while maintaining high effici
 * yolox
 * dtlpy
 * dtlpy-converters
-* An account in the [Dataloop platform](https://console.dataloop.ai/)
+* An account in the [DDOE platform](https://console.dataloop.ai/)
 
 ## Installation
 
 To install the package and create the YOLOv5 model adapter, you will need
 a [project](https://developers.dataloop.ai/tutorials/getting_started/sdk_overview/chapter/#to-create-a-new-project) and
 a [dataset](https://developers.dataloop.ai/tutorials/data_management/manage_datasets/chapter/#create-dataset) in the
-Dataloop platform. The dataset should
+DDOE platform. The dataset should
 have [directories](https://developers.dataloop.ai/tutorials/data_management/manage_datasets/chapter/#create-directory)
 containing its training and validation subsets.
 
